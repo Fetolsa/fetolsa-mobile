@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Village Chief</string>
+    <string name="title_activity_main">Village Chief</string>
+    <string name="package_name">app.oyasync.fetolsa.villagechief.customer</string>
+    <string name="custom_url_scheme">app.oyasync.fetolsa.villagechief.customer</string>
+</resources>

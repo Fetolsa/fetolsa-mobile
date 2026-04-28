@@ -1,0 +1,71 @@
+/* eslint-disable */
+/**
+ * AUTO-GENERATED FILE - DO NOT EDIT BY HAND.
+ *
+ * Overwritten by scripts/build-tenant.ts during a tenant build.
+ * Default values below are Village Chief, used for `pnpm dev:customer`.
+ */
+import type { TenantConfig } from "@fetolsa/tenant-loader";
+
+export const tenant: TenantConfig = {
+  code: "villagechief",
+  displayName: "Village Chief",
+  shortName: "Village Chief",
+  apiBaseUrl: "https://villagechief.fetolsa.app",
+  customer: {
+    bundleId: "app.oyasync.fetolsa.villagechief.customer",
+    appName: "Village Chief",
+    versionName: "1.0.0",
+    versionCode: 1,
+  },
+  rider: {
+    bundleId: "app.oyasync.fetolsa.villagechief.rider",
+    appName: "Village Chief Rider",
+    versionName: "1.0.0",
+    versionCode: 1,
+  },
+  theme: {
+    primary: "#E60012",
+    primaryForeground: "#FFFFFF",
+    secondary: "#0A0A0A",
+    background: "#FFFFFF",
+    foreground: "#0A0A0A",
+    accent: "#F5F5F5",
+    radius: "0.5rem",
+  },
+  assets: {
+    iconPath: "tenants/villagechief/assets/icon.png",
+    splashPath: "tenants/villagechief/assets/splash.png",
+    adaptiveIconForeground: "tenants/villagechief/assets/adaptive-fg.png",
+    adaptiveIconBackground: "tenants/villagechief/assets/adaptive-bg.png",
+  },
+  push: {
+    fcmProjectId: "vc-fetolsa-prod",
+    googleServicesPath: "tenants/villagechief/google-services.json",
+  },
+  features: {
+    delivery: true,
+    pickup: true,
+    rooms: false,
+    aiUpsell: true,
+    rating: true,
+    referral: false,
+  },
+  listing: {
+    supportEmail: "support@fetolsa.app",
+    privacyUrl: "https://villagechief.fetolsa.app/privacy",
+    termsUrl: "https://villagechief.fetolsa.app/terms",
+    websiteUrl: "https://villagechiefrestaurant.com",
+  },
+  payment: {
+    paystackPublicKey: "pk_live_8b82560fb73ffa2497cfe08257e6d085d783ffd0",
+    currency: "NGN",
+    deepLinkScheme: "vchief://",
+  },
+  contact: {
+    phone: "+234 805 215 0719",
+    address: "2 Matambella Garden, Wuse 2, Federal Capital Territory, Nigeria",
+    whatsapp: null,
+    instagram: null,
+  },
+};

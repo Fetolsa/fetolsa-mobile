@@ -1,21 +1,22 @@
+# Dependencies
 node_modules/
 .pnpm-store/
+
+# Build outputs
 dist/
 build/
 out/
 .turbo/
 *.tsbuildinfo
-android/app/build/
-android/build/
-android/.gradle/
-android/local.properties
-android/app/release/
-android/app/debug/
-ios/build/
-ios/Pods/
-ios/DerivedData/
+
+# Native build artifacts (Capacitor projects manage their own .gitignore inside android/ and ios/)
+**/local.properties
+
+# Capacitor generated web assets (re-synced from dist/ on every build)
 apps/*/android/app/src/main/assets/public/
 apps/*/ios/App/App/public/
+
+# Secrets - NEVER COMMIT
 *.keystore
 *.jks
 *.p12
@@ -29,21 +30,30 @@ GoogleService-Info.plist
 tenants/*/google-services.json
 tenants/*/GoogleService-Info.plist
 tenants/*/secrets/
-apps/*/src/tenant.generated.ts
+
+# Build script backup
 apps/*/capacitor.config.ts.bak
+
+# IDE
 .idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 *.swp
 *.swo
+
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Testing
 coverage/
 .nyc_output/
