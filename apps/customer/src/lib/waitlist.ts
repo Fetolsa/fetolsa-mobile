@@ -20,8 +20,6 @@ export interface WaitlistResult {
   error?: WaitlistError;
 }
 
-// In dev, use relative URL so Vite's proxy handles CORS.
-// In production (Capacitor build), hit the full backend URL.
 const API_BASE = import.meta.env.DEV ? "" : tenant.apiBaseUrl;
 const ENDPOINT = `${API_BASE}/api/method/fetolsa_api.marketing.api.waitlist.signup`;
 
@@ -40,9 +38,14 @@ export async function submitWaitlist(data: WaitlistSubmission): Promise<Waitlist
       body: body.toString(),
     });
 
-    const json = await res.json().catch(() => null);
-    const payload = json?.message;
+    let json: any = null;
+    try {
+      json = await res.json();
+    } catch {
+      return { success: false, error: "server_error" };
+    }
 
+    const payload = json?.message;
     if (res.ok && payload?.success === true) {
       return { success: true };
     }

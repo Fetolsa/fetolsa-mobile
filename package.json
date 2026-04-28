@@ -16,7 +16,10 @@
     "dev:customer": "pnpm --filter @fetolsa/customer dev",
     "verify:tenant": "tsx scripts/verify-tenant.ts",
     "verify:all": "tsx scripts/verify-tenant.ts --all",
-    "verify:vc": "tsx scripts/verify-tenant.ts villagechief"
+    "verify:vc": "tsx scripts/verify-tenant.ts villagechief",
+    "inject:vc:customer": "tsx scripts/inject-config.ts villagechief customer",
+    "build:android:vc:customer": "tsx scripts/build-tenant.ts --tenant=villagechief --app=customer",
+    "build:android:vc:customer:debug": "tsx scripts/build-tenant.ts --tenant=villagechief --app=customer --buildType=debug"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",

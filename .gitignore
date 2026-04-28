@@ -9,12 +9,15 @@ out/
 .turbo/
 *.tsbuildinfo
 
-# Native build artifacts (Capacitor projects manage their own .gitignore inside android/ and ios/)
+# Native build artifacts
 **/local.properties
 
-# Capacitor generated web assets (re-synced from dist/ on every build)
+# Capacitor generated web assets
 apps/*/android/app/src/main/assets/public/
 apps/*/ios/App/App/public/
+
+# Resources copied by build pipeline (regenerated each build from tenants/<code>/assets/)
+apps/*/resources/
 
 # Secrets - NEVER COMMIT
 *.keystore
@@ -30,6 +33,10 @@ GoogleService-Info.plist
 tenants/*/google-services.json
 tenants/*/GoogleService-Info.plist
 tenants/*/secrets/
+
+# Android signing config (created locally, contains keystore refs)
+apps/*/android/signing.gradle
+apps/*/android/key.properties
 
 # Build script backup
 apps/*/capacitor.config.ts.bak
