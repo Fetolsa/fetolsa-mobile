@@ -11,13 +11,16 @@
   "scripts": {
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "build": "turbo run build"
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "verify:tenant": "tsx scripts/verify-tenant.ts",
+    "verify:all": "tsx scripts/verify-tenant.ts --all",
+    "verify:vc": "tsx scripts/verify-tenant.ts villagechief"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
-    "eslint": "^10.2.1",
+    "tsx": "^4.19.2",
     "turbo": "^2.3.3",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.59.1"
+    "typescript": "^5.7.2"
   }
 }
