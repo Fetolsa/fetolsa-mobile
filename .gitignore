@@ -64,3 +64,5 @@ yarn-error.log*
 # Testing
 coverage/
 .nyc_output/
+# Auto-generated tenant runtime config (contains API token from .env, must NOT be committed)
+apps/*/src/tenant.generated.ts

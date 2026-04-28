@@ -1,27 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Bebas+Neue&family=Barlow+Condensed:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Tenant theme variables - injected at runtime by applyTenantTheme() */
-  --color-primary: #E60012;
-  --color-primary-foreground: #FFFFFF;
-  --color-secondary: #0A0A0A;
-  --color-background: #FFFFFF;
-  --color-foreground: #0A0A0A;
-  --color-accent: #F5F5F5;
-  --radius: 0.5rem;
+@layer base {
+  :root {
+    --background: 30 20% 96%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 0 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 30 15% 92%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 85% 50%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 85% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 10% 85%;
+    --input: 30 15% 92%;
+    --ring: 0 85% 50%;
+    --radius: 0.75rem;
+    --surface: 30 20% 94%;
+  }
 }
 
-html, body, #root {
-  height: 100%;
+@layer base {
+  * {
+    border-color: hsl(var(--border) / 0.3);
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+    background-color: hsl(30, 20%, 96%);
+    background-image:
+      radial-gradient(ellipse at 20% 50%, hsla(0, 85%, 50%, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 20%, hsla(0, 0%, 0%, 0.04) 0%, transparent 50%);
+  }
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .font-display {
+    font-family: 'Bebas Neue', cursive;
+  }
+  .font-condensed {
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  .gold-line-decoration {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .gold-line-decoration::before,
+  .gold-line-decoration::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: hsl(0, 85%, 50%);
+    opacity: 0.5;
+  }
+  .gold-divider {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0;
+  }
+  .gold-divider::before,
+  .gold-divider::after {
+    content: '';
+    width: 2rem;
+    height: 1px;
+    background: hsl(0, 85%, 50%);
+    opacity: 0.5;
+  }
+  .price-badge {
+    background: hsl(0, 85%, 50%);
+    color: white;
+    font-weight: 700;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+  }
 }

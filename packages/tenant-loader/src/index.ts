@@ -1,1 +1,1 @@
-export { TenantConfigSchema, type TenantConfig } from "./schema.js";
+export { TenantConfigSchema, type TenantConfig, type RuntimeTenantConfig } from "./schema.js";
