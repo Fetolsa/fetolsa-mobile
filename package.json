@@ -13,6 +13,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "build": "turbo run build",
+    "dev:customer": "pnpm --filter @fetolsa/customer dev",
     "verify:tenant": "tsx scripts/verify-tenant.ts",
     "verify:all": "tsx scripts/verify-tenant.ts --all",
     "verify:vc": "tsx scripts/verify-tenant.ts villagechief"

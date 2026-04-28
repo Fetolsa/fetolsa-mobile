@@ -1,14 +1,8 @@
 #!/usr/bin/env node
-/**
- * CLI to validate a tenant config against the schema.
- * Usage:
- *   tsx scripts/verify-tenant.ts <tenant-code>
- *   tsx scripts/verify-tenant.ts --all
- */
 import { readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadTenant, TenantNotFoundError, TenantConfigInvalidError } from "@fetolsa/tenant-loader";
+import { loadTenant, TenantNotFoundError, TenantConfigInvalidError } from "@fetolsa/tenant-loader/loader";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
