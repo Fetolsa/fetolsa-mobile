@@ -1,22 +1,23 @@
+import { Logo } from "./components/Logo";
+import { WaitlistForm } from "./components/WaitlistForm";
+import { Footer } from "./components/Footer";
 import { tenant } from "./tenant.generated";
 
 export function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="text-center max-w-md">
-        <h1 className="text-4xl font-bold text-foreground mb-2">
-          {tenant.displayName}
-        </h1>
-        <p className="text-foreground/70 mb-6">B1 shell live</p>
-        <button
-          className="bg-primary text-primary-foreground px-6 py-3 rounded font-semibold"
-          onClick={() => alert(`Theme works. Primary = ${tenant.theme.primary}`)}
-        >
-          Test theme
-        </button>
-        <p className="mt-8 text-sm text-foreground/50">
-          {tenant.contact.phone} &middot; {tenant.contact.address}
-        </p>
+    <div className="min-h-screen flex flex-col items-center px-6 py-12">
+      <div className="w-full max-w-md flex-1">
+        <header className="text-center mb-8">
+          <Logo className="mb-6" />
+          <h1 className="text-3xl font-bold mb-2">{tenant.displayName}</h1>
+          <p className="text-foreground/70">
+            Order your favorites. Coming soon to your phone.
+          </p>
+        </header>
+
+        <WaitlistForm />
+
+        <Footer />
       </div>
     </div>
   );
