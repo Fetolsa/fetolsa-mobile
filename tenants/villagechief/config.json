@@ -53,6 +53,14 @@
                     "currency":  "NGN",
                     "deepLinkScheme":  "vchief://"
                 },
+        "branchAddresses":  {
+                            "Garki Area 8":  "Bola Tinubu Way, off Mohammadu Buhari Way, Garki Area 8, Abuja",
+                            "Gudu Branch":  "57 Road, Lokogoma, Abuja",
+                            "Main Branch":  "2 Matambella Garden, Wuse 2, Abuja",
+                            "VC Online":  "2 Matambella Garden, Wuse 2, Abuja",
+                            "VCS Wuse Extension":  "2 Matambella Garden, Wuse 2, Abuja",
+                            "Wuse Branch":  "2 Matambella Garden, Wuse 2, Abuja"
+                        },
     "contact":  {
                     "phone":  "+234 805 215 0719",
                     "address":  "2 Matambella Garden, Wuse 2, Federal Capital Territory, Nigeria",

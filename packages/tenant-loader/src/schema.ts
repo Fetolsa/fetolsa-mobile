@@ -74,6 +74,7 @@ export const TenantConfigSchema = z.object({
   features: Features,
   listing: Listing,
   payment: Payment,
+  branchAddresses: z.record(z.string(), z.string()).optional(),
   contact: Contact,
 }).strict();
 export type TenantConfig = z.infer<typeof TenantConfigSchema>;

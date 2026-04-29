@@ -287,10 +287,24 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
             />
 
             {orderType === "pickup" ? (
-              <div className="bg-muted rounded-xl p-4 text-sm border border-primary/20">
-                <p className="font-semibold text-foreground mb-1">Pickup Location</p>
-                <p className="text-foreground">Village Chief Restaurant</p>
-                <p className="text-muted-foreground">{tenant.contact?.address || ""}</p>
+              <div
+                style={{ backgroundColor: "#f3efe8", borderColor: "#ebe6dd" }}
+                className="rounded-xl p-4 text-sm border"
+              >
+                <p
+                  style={{ color: "#1a1a1a" }}
+                  className="font-condensed font-bold uppercase tracking-wide mb-1"
+                >
+                  Pickup at {branch || "selected branch"}
+                </p>
+                <p style={{ color: "#1a1a1a" }} className="font-medium">
+                  {tenant.displayName}
+                </p>
+                <p className="text-muted-foreground mt-0.5">
+                  {(branch && tenant.branchAddresses?.[branch]) ||
+                    tenant.contact?.address ||
+                    "Address not configured"}
+                </p>
                 <p className="text-xs text-muted-foreground mt-2">
                   No delivery fee &middot; Show your confirmation code on arrival
                 </p>

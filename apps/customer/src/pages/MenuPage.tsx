@@ -13,6 +13,7 @@ import { BranchSelector } from "../components/BranchSelector";
 import { MenuItemRow } from "../components/MenuItemRow";
 import { MenuItemModal } from "../components/MenuItemModal";
 import { CategorySheet } from "../components/CategorySheet";
+import { SearchSheet } from "../components/SearchSheet";
 import { CartDrawer } from "../components/CartDrawer";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { LoginModal } from "../components/LoginModal";
@@ -30,6 +31,7 @@ export default function MenuPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [searchSheetOpen, setSearchSheetOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>("menu");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +144,7 @@ export default function MenuPage() {
       style={{ backgroundColor: "#faf7f2" }}
       className="min-h-screen pb-20"
     >
-      <MenuHeader />
+      <MenuHeader onSearchOpen={() => setSearchSheetOpen(true)} />
       <BranchSelector branches={branches} />
 
       <main className="container max-w-md mx-auto px-4 py-5 space-y-8">
@@ -219,7 +221,7 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating "Browse" pill — bottom-right, above the BottomNav */}
+      {/* Floating "Browse" pill â€” bottom-right, above the BottomNav */}
       {categories.length > 0 && (
         <button
           onClick={() => setCategorySheetOpen(true)}
@@ -239,6 +241,13 @@ export default function MenuPage() {
         active={activeCategory}
         onClose={() => setCategorySheetOpen(false)}
         onSelect={scrollToCategory}
+      />
+      <SearchSheet
+        open={searchSheetOpen}
+        categories={categories}
+        onClose={() => setSearchSheetOpen(false)}
+        onSelectItem={(item) => setSelectedItem(item)}
+        onSelectCategory={(name) => scrollToCategory(name)}
       />
       <CartDrawer
         open={cartOpen}
