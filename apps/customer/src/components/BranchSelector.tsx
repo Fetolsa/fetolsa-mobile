@@ -14,7 +14,7 @@ export function BranchSelector({ branches }: Props) {
   if (branches.length === 0) return null;
 
   return (
-    <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-sm border-b border-primary/20">
+    <div style={{ backgroundColor: "#faf7f2" }} className="sticky top-14 z-30 border-b border-primary/20">
       <div className="container px-4 py-2 flex items-center gap-3">
         <span className="text-sm text-muted-foreground font-condensed uppercase tracking-wide shrink-0">
           Branch:
@@ -28,7 +28,7 @@ export function BranchSelector({ branches }: Props) {
             <ChevronDown className="w-4 h-4 text-primary" />
           </button>
           {open && (
-            <div className="absolute top-full left-0 mt-1 bg-card border border-primary/20 rounded-lg shadow-lg overflow-hidden z-10 min-w-[180px]">
+            <div style={{ backgroundColor: "#ffffff", borderColor: "#ebe6dd" }} className="absolute top-full left-0 mt-1 border rounded-lg shadow-2xl overflow-hidden z-50 min-w-[200px]">
               {branches.map((b) => (
                 <button
                   key={b.name}

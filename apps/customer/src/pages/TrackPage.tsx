@@ -17,6 +17,14 @@ const STEPS: StepDef[] = [
   { key: "delivered", label: "Delivered", index: 5 },
 ];
 
+const PICKUP_STEPS: StepDef[] = [
+  { key: "confirmed", label: "Order Confirmed", index: 1 },
+  { key: "preparing", label: "Preparing", index: 2 },
+  { key: "rider_assigned", label: "Ready for Pickup", index: 3 },
+  { key: "picked_up", label: "Collected", index: 4 },
+  { key: "delivered", label: "Completed", index: 5 },
+];
+
 export default function TrackPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const navigate = useNavigate();
@@ -83,8 +91,10 @@ export default function TrackPage() {
     );
   }
 
+  const isPickupOrder = (order!.order_type || "").toLowerCase() === "pickup";
+  const stepsForOrder = isPickupOrder ? PICKUP_STEPS : STEPS;
   const currentStep = statusToStep(order!.status || order!.order_status);
-  const currentIndex = STEPS.find((s) => s.key === currentStep)?.index ?? 1;
+  const currentIndex = stepsForOrder.find((s) => s.key === currentStep)?.index ?? 1;
   const isCancelled = currentStep === "cancelled";
 
   return (
@@ -103,7 +113,7 @@ export default function TrackPage() {
       </header>
 
       <main className="container px-4 py-6 max-w-md mx-auto space-y-4">
-        {(currentStep === "rider_assigned" || currentStep === "picked_up") && order!.rider_name ? (
+        {!isPickupOrder && (currentStep === "rider_assigned" || currentStep === "picked_up") && order!.rider_name ? (
           <div className="bg-card rounded-xl border border-primary/20 p-4 flex items-center gap-3">
             <MapPin className="w-5 h-5 text-primary shrink-0" />
             <div className="flex-1">
@@ -119,7 +129,7 @@ export default function TrackPage() {
         ) : (
           <div className="bg-card rounded-xl border border-primary/20 p-4 flex items-center gap-3">
             <MapPin className="w-5 h-5 text-primary shrink-0" />
-            <p className="text-muted-foreground text-sm font-condensed">Waiting for rider...</p>
+            <p className="text-muted-foreground text-sm font-condensed">{isPickupOrder ? "Pickup at the branch when ready" : "Waiting for rider..."}</p>
           </div>
         )}
 
@@ -128,11 +138,11 @@ export default function TrackPage() {
           <p className="text-foreground font-bold text-lg mb-5">{orderId}</p>
 
           <div className="space-y-1">
-            {STEPS.map((step, i) => {
+            {stepsForOrder.map((step, i) => {
               const isDone = step.index < currentIndex;
               const isActive = step.index === currentIndex;
               const isInactive = step.index > currentIndex;
-              const isLast = i === STEPS.length - 1;
+              const isLast = i === stepsForOrder.length - 1;
 
               return (
                 <div key={step.key} className="flex items-start gap-3">

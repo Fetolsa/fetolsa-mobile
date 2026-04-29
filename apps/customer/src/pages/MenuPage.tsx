@@ -106,9 +106,30 @@ export default function MenuPage() {
   const handleOrderPlaced = async (orderId: string, paymentUrl: string) => {
     console.log("[order placed]", orderId, "opening Paystack");
     clearCart();
+
+    // Belt-and-suspenders post-payment routing:
+    // 1. Try the deep link path: Paystack redirects to vchief://payment/callback?order_id=X
+    //    which the AndroidManifest intercepts and routes via App.tsx DeepLinkRouter.
+    // 2. Fallback: if the user manually closes the Custom Tab (or the deep link doesn't
+    //    fire), we still navigate to the order callback page so they can see status.
+    let browserFinishedListener: { remove: () => void } | null = null;
     try {
-      await Browser.open({ url: paymentUrl, presentationStyle: "popover" });
-    } catch {
+      browserFinishedListener = await Browser.addListener("browserFinished", () => {
+        console.log("[paystack browser closed] navigating to order callback");
+        window.location.hash = `#/order/${orderId}`;
+        if (browserFinishedListener) {
+          browserFinishedListener.remove();
+          browserFinishedListener = null;
+        }
+      });
+
+      await Browser.open({ url: paymentUrl, presentationStyle: "fullscreen" });
+    } catch (err) {
+      console.error("[paystack browser open failed]", err);
+      if (browserFinishedListener) {
+        browserFinishedListener.remove();
+      }
+      // Last resort: nav in same window
       window.location.href = paymentUrl;
     }
   };
@@ -221,7 +242,7 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating "Browse" pill â€” bottom-right, above the BottomNav */}
+      {/* Floating "Browse" pill Ã¢â‚¬â€ bottom-right, above the BottomNav */}
       {categories.length > 0 && (
         <button
           onClick={() => setCategorySheetOpen(true)}

@@ -5,11 +5,16 @@ const API_BASE = `${tenant.apiBaseUrl}/api/method`;
 const AUTH_HEADER = `token ${tenant.apiToken}`;
 
 export interface DeliveryFeeResult {
-  status: "ok" | "error";
+  status: "ok" | "unlocatable" | "api_error" | "error";
   fee: number;
   distance_km: number | null;
   duration: string;
   formatted_address: string;
+  customer_lat: number | null;
+  customer_lng: number | null;
+  routing_branch?: string;
+  requested_branch?: string;
+  message?: string;
 }
 
 export interface PlaceOrderRequest {
@@ -22,6 +27,7 @@ export interface PlaceOrderRequest {
   items: CartItem[];
   delivery_fee: number;
   order_type: "Delivery" | "Pickup";
+  payment_callback_url?: string;
 }
 
 export interface PlaceOrderResult {
@@ -96,6 +102,7 @@ export async function placeOrder(req: PlaceOrderRequest): Promise<PlaceOrderResu
   params.append("items", JSON.stringify(req.items));
   params.append("delivery_fee", String(req.delivery_fee));
   params.append("order_type", req.order_type);
+  if (req.payment_callback_url) params.append("payment_callback_url", req.payment_callback_url);
 
   return frappePost<PlaceOrderResult>(
     "/fetolsa_api.delivery.orders.place_delivery_order",
