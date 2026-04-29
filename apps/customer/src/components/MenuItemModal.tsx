@@ -44,12 +44,12 @@ export function MenuItemModal({ item, onClose }: Props) {
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
             style={{ backgroundColor: "#ffffff" }}
-            className="rounded-xl w-full max-w-md p-6 relative shadow-2xl"
+            className="rounded-2xl w-full max-w-md p-6 relative shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -60,35 +60,61 @@ export function MenuItemModal({ item, onClose }: Props) {
               <X className="w-5 h-5 text-muted-foreground" />
             </button>
 
-            <h2 className="font-condensed font-bold text-xl uppercase tracking-wide text-foreground pr-8">
-              {item.item_name}
-            </h2>
-            {item.description && item.description !== item.item_name && (
-              <p className="text-muted-foreground text-sm mt-2">{item.description}</p>
-            )}
-            <p className="price-badge inline-block mt-3">
-              &#8358;{item.rate.toLocaleString()}
-            </p>
+            <div className="flex items-start justify-between gap-4 pr-6">
+              <h2
+                style={{ color: "#1a1a1a" }}
+                className="font-condensed font-bold text-xl uppercase tracking-wide leading-tight flex-1"
+              >
+                {item.item_name}
+              </h2>
+              <p
+                style={{ color: "#1a1a1a" }}
+                className="font-condensed font-bold text-lg shrink-0"
+              >
+                &#8358;{item.rate.toLocaleString()}
+              </p>
+            </div>
 
-            <div className="flex items-center gap-4 mt-6">
-              <span className="text-sm font-condensed font-semibold uppercase tracking-wide text-muted-foreground">
+            {item.description &&
+              item.description.trim().toLowerCase() !==
+                item.item_name.trim().toLowerCase() && (
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  {item.description}
+                </p>
+              )}
+
+            <div className="flex items-center justify-between mt-6">
+              <span
+                style={{ color: "#1a1a1a" }}
+                className="text-sm font-condensed font-semibold uppercase tracking-wide"
+              >
                 Quantity
               </span>
-              <div className="flex items-center gap-3 bg-muted rounded-lg p-1">
+              <div
+                style={{ backgroundColor: "#f3efe8" }}
+                className="flex items-center gap-3 rounded-lg p-1"
+              >
                 <button
                   onClick={() => setQty(Math.max(1, qty - 1))}
-                  className="p-1.5 hover:bg-background rounded-md transition-colors"
+                  style={{ color: "#1a1a1a" }}
+                  className="p-1.5 hover:bg-white rounded-md transition-colors"
                   aria-label="Decrease quantity"
                 >
-                  <Minus className="w-4 h-4 text-primary" />
+                  <Minus className="w-4 h-4" />
                 </button>
-                <span className="w-8 text-center font-semibold text-foreground">{qty}</span>
+                <span
+                  style={{ color: "#1a1a1a" }}
+                  className="w-8 text-center font-bold"
+                >
+                  {qty}
+                </span>
                 <button
                   onClick={() => setQty(qty + 1)}
-                  className="p-1.5 hover:bg-background rounded-md transition-colors"
+                  style={{ color: "#1a1a1a" }}
+                  className="p-1.5 hover:bg-white rounded-md transition-colors"
                   aria-label="Increase quantity"
                 >
-                  <Plus className="w-4 h-4 text-primary" />
+                  <Plus className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -97,13 +123,14 @@ export function MenuItemModal({ item, onClose }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Special instructions (optional)"
-              style={{ backgroundColor: "#f3efe8" }}
-              className="w-full mt-4 p-3 rounded-lg text-sm text-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
+              style={{ backgroundColor: "#f3efe8", color: "#1a1a1a" }}
+              className="w-full mt-4 p-3 rounded-lg text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
             />
 
             <button
               onClick={handleAdd}
-              className="w-full mt-4 bg-secondary text-secondary-foreground font-condensed font-bold uppercase tracking-wider py-3 rounded-lg hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
+              className="w-full mt-5 font-condensed font-bold uppercase tracking-wider py-3.5 rounded-lg hover:opacity-90 transition-opacity"
             >
               Add to Cart &mdash; &#8358;{(item.rate * qty).toLocaleString()}
             </button>

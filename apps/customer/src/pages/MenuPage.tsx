@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { LayoutGrid } from "lucide-react";
 import { Browser } from "@capacitor/browser";
 import { fetchMenu, fetchBranches } from "../lib/menu-api";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
@@ -9,14 +10,15 @@ import { useCart } from "../context/CartContext";
 import { useCustomer } from "../context/CustomerContext";
 import { MenuHeader } from "../components/MenuHeader";
 import { BranchSelector } from "../components/BranchSelector";
-import { CategoryNav } from "../components/CategoryNav";
-import { MenuItemCard } from "../components/MenuItemCard";
+import { MenuItemRow } from "../components/MenuItemRow";
 import { MenuItemModal } from "../components/MenuItemModal";
+import { CategorySheet } from "../components/CategorySheet";
 import { CartDrawer } from "../components/CartDrawer";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { LoginModal } from "../components/LoginModal";
 import { AccountDrawer } from "../components/AccountDrawer";
 import { EmailPrompt } from "../components/EmailPrompt";
+import { BottomNav, type NavTab } from "../components/BottomNav";
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -27,15 +29,15 @@ export default function MenuPage() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<NavTab>("menu");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
   const { clear: clearCart, addItem } = useCart();
-  const { needsEmailPrompt, setNeedsEmailPrompt } = useCustomer();
+  const { needsEmailPrompt, setNeedsEmailPrompt, isLoggedIn, orders } = useCustomer();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
-  // Reorder helper: replace cart with past order's items, open cart drawer.
-  // Notes are not carried over (they were specific to that order). Quantities are.
   const handleReorder = (order: CustomerOrder) => {
     if (!order.items || order.items.length === 0) return;
     clearCart();
@@ -48,10 +50,10 @@ export default function MenuPage() {
       });
     });
     setCartOpen(true);
+    setActiveTab("cart");
   };
 
   const handleViewOrder = (orderId: string) => {
-    // Navigate via hash router to track page
     window.location.hash = `#/track/${orderId}`;
   };
 
@@ -109,40 +111,73 @@ export default function MenuPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      <MenuHeader
-        onCartOpen={() => setCartOpen(true)}
-        onAccountOpen={() => setAccountOpen(true)}
-        onSignInOpen={() => setLoginOpen(true)}
-      />
-      <BranchSelector branches={branches} />
-      <CategoryNav
-        categories={categories}
-        active={activeCategory}
-        onSelect={scrollToCategory}
-      />
+  const handleTabSelect = (tab: NavTab) => {
+    setActiveTab(tab);
+    if (tab === "menu") {
+      // already on menu - smooth scroll to top
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (tab === "orders") {
+      // For now, navigate to most recent order's track page if logged in
+      if (isLoggedIn && orders.length > 0) {
+        window.location.hash = `#/track/${orders[0].name}`;
+      } else if (!isLoggedIn) {
+        setLoginOpen(true);
+      } else {
+        // Logged in but no orders - open account drawer instead
+        setAccountOpen(true);
+      }
+    } else if (tab === "account") {
+      if (isLoggedIn) {
+        setAccountOpen(true);
+      } else {
+        setLoginOpen(true);
+      }
+    } else if (tab === "cart") {
+      setCartOpen(true);
+    }
+  };
 
-      <main className="container px-4 py-6 space-y-10">
+  return (
+    <div
+      style={{ backgroundColor: "#faf7f2" }}
+      className="min-h-screen pb-20"
+    >
+      <MenuHeader />
+      <BranchSelector branches={branches} />
+
+      <main className="container max-w-md mx-auto px-4 py-5 space-y-8">
         {categories.map((cat) => (
           <section
             key={cat.name}
             ref={(el) => {
               sectionRefs.current[cat.name] = el;
             }}
-            className="scroll-mt-36"
+            className="scroll-mt-32"
           >
-            <motion.h2
-              initial={{ opacity: 0, y: 10 }}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="font-display text-2xl text-primary gold-line-decoration tracking-wider mb-6"
+              className="flex items-center gap-3 mb-4"
             >
-              {cat.name.toUpperCase()}
-            </motion.h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div
+                style={{ backgroundColor: "#E60019" }}
+                className="w-1 h-7 rounded-full"
+              />
+              <h2
+                style={{ color: "#1a1a1a", letterSpacing: "0.06em" }}
+                className="font-display text-2xl uppercase"
+              >
+                {cat.name}
+              </h2>
+              <span className="text-xs text-muted-foreground font-condensed ml-auto">
+                {cat.items.length} item{cat.items.length === 1 ? "" : "s"}
+              </span>
+            </motion.div>
+
+            <div className="space-y-2">
               {cat.items.map((item, i) => (
-                <MenuItemCard
+                <MenuItemRow
                   key={item.item_code}
                   item={item}
                   index={i}
@@ -150,15 +185,15 @@ export default function MenuPage() {
                 />
               ))}
             </div>
-            <div className="gold-divider">
-              <span className="text-primary/40 text-xs">&#9670;</span>
-            </div>
           </section>
         ))}
 
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+            <div
+              style={{ borderColor: "#E60019" }}
+              className="animate-spin w-6 h-6 border-2 border-t-transparent rounded-full"
+            />
           </div>
         )}
 
@@ -167,7 +202,8 @@ export default function MenuPage() {
             <p className="text-destructive font-medium">{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm font-condensed font-bold uppercase tracking-wide hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
+              className="px-4 py-2 rounded-lg text-sm font-condensed font-bold uppercase tracking-wide"
             >
               Retry
             </button>
@@ -176,12 +212,34 @@ export default function MenuPage() {
 
         {!loading && !error && categories.length === 0 && (
           <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground font-condensed">No menu items available.</p>
+            <p className="text-muted-foreground font-condensed">
+              No menu items available.
+            </p>
           </div>
         )}
       </main>
 
+      {/* Floating "Browse" pill — bottom-right, above the BottomNav */}
+      {categories.length > 0 && (
+        <button
+          onClick={() => setCategorySheetOpen(true)}
+          style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
+          className="fixed bottom-20 right-4 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg font-condensed font-bold text-xs uppercase tracking-wide hover:opacity-90 transition-opacity"
+          aria-label="Browse categories"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Browse
+        </button>
+      )}
+
       <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <CategorySheet
+        open={categorySheetOpen}
+        categories={categories}
+        active={activeCategory}
+        onClose={() => setCategorySheetOpen(false)}
+        onSelect={scrollToCategory}
+      />
       <CartDrawer
         open={cartOpen}
         onClose={() => setCartOpen(false)}
@@ -203,6 +261,8 @@ export default function MenuPage() {
         open={needsEmailPrompt}
         onClose={() => setNeedsEmailPrompt(false)}
       />
+
+      <BottomNav active={activeTab} onSelect={handleTabSelect} />
     </div>
   );
 }
