@@ -81,6 +81,9 @@ export function EmailPrompt({ open, onClose }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoComplete="email"
               className="w-full bg-muted rounded-lg pl-10 pr-3 py-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               autoFocus

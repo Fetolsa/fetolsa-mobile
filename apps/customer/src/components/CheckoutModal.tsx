@@ -260,13 +260,19 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Full Name *"
+              autoCapitalize="words"
+              autoComplete="name"
               className={inputClass}
             />
             <input
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))}
               placeholder="Phone Number *"
               type="tel"
+              inputMode="tel"
+              pattern="[0-9+]*"
+              enterKeyHint="next"
+              autoComplete="tel"
               className={inputClass}
             />
             <input
@@ -274,6 +280,9 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email (optional)"
               type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              autoComplete="email"
               className={inputClass}
             />
 
@@ -294,6 +303,8 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
                     onChange={(e) => onAddressChange(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchAddress()}
                     placeholder="Delivery Address *"
+                    autoCapitalize="words"
+                    autoComplete="street-address"
                     className={inputClass}
                   />
                   <button
@@ -366,6 +377,7 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Order notes (optional)"
+              autoCapitalize="sentences"
               className={inputClass}
             />
 

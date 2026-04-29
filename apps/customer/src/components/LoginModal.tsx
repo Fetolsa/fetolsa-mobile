@@ -137,10 +137,13 @@ export function LoginModal({ open, onClose, onSuccess }: Props) {
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))}
                   placeholder="08012345678"
                   type="tel"
                   inputMode="tel"
+                  pattern="[0-9+]*"
+                  autoComplete="tel"
+                  enterKeyHint="send"
                   className={`${inputClass} pl-10`}
                   onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                 />
@@ -175,6 +178,8 @@ export function LoginModal({ open, onClose, onSuccess }: Props) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name (optional, for new accounts)"
+                autoCapitalize="words"
+                autoComplete="name"
                 className={inputClass}
               />
               <button

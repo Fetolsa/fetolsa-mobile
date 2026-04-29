@@ -123,6 +123,7 @@ export function MenuItemModal({ item, onClose }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Special instructions (optional)"
+              autoCapitalize="sentences"
               style={{ backgroundColor: "#f3efe8", color: "#1a1a1a" }}
               className="w-full mt-4 p-3 rounded-lg text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
             />
