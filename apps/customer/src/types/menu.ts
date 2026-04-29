@@ -17,3 +17,11 @@ export interface Branch {
   label?: string;
   address?: string;
 }
+
+export interface CartItem {
+  item_code: string;
+  item_name: string;
+  qty: number;
+  rate: number;
+  notes?: string;
+}

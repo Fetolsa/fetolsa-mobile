@@ -8,15 +8,22 @@ import { BranchSelector } from "../components/BranchSelector";
 import { CategoryNav } from "../components/CategoryNav";
 import { MenuItemCard } from "../components/MenuItemCard";
 import { MenuItemModal } from "../components/MenuItemModal";
+import { CartDrawer } from "../components/CartDrawer";
+import { CheckoutModal } from "../components/CheckoutModal";
+import { useCart } from "../context/CartContext";
+import { Browser } from "@capacitor/browser";
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
+  const { clear: clearCart } = useCart();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
@@ -46,9 +53,7 @@ export default function MenuPage() {
           setBranch(vcOnline ? vcOnline.name : list[0].name);
         }
       })
-      .catch(() => {
-        // Branch fetch failure is non-fatal ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â menu still works
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -60,9 +65,27 @@ export default function MenuPage() {
     sectionRefs.current[name]?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const handleCheckout = () => {
+    setCartOpen(false);
+    setCheckoutOpen(true);
+  };
+
+  const handleOrderPlaced = async (orderId: string, paymentUrl: string) => {
+    console.log("[order placed]", orderId, "opening Paystack");
+    // Order is already in Frappe at this point. Clear cart now so the
+    // user returns to a clean menu after payment regardless of how they
+    // come back (deep link, manual return, browser back).
+    clearCart();
+    try {
+      await Browser.open({ url: paymentUrl, presentationStyle: "popover" });
+    } catch {
+      window.location.href = paymentUrl;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <MenuHeader />
+      <MenuHeader onCartOpen={() => setCartOpen(true)} />
       <BranchSelector branches={branches} />
       <CategoryNav
         categories={categories}
@@ -74,7 +97,7 @@ export default function MenuPage() {
         {categories.map((cat) => (
           <section
             key={cat.name}
-            ref={(el: HTMLDivElement | null) => {
+            ref={(el) => {
               sectionRefs.current[cat.name] = el;
             }}
             className="scroll-mt-36"
@@ -123,14 +146,22 @@ export default function MenuPage() {
 
         {!loading && !error && categories.length === 0 && (
           <div className="flex items-center justify-center py-20">
-            <p className="text-muted-foreground font-condensed">
-              No menu items available.
-            </p>
+            <p className="text-muted-foreground font-condensed">No menu items available.</p>
           </div>
         )}
       </main>
 
       <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        onCheckout={handleCheckout}
+      />
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        onOrderPlaced={handleOrderPlaced}
+      />
     </div>
   );
 }
