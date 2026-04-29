@@ -19,7 +19,7 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md"
             onClick={onClose}
           />
           <motion.div
@@ -27,7 +27,8 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm bg-background shadow-xl flex flex-col border-l border-primary/20"
+            style={{ backgroundColor: "#ffffff" }}
+            className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm shadow-2xl flex flex-col"
           >
             <div className="flex items-center justify-between p-4 border-b border-primary/20">
               <h2 className="font-display text-xl tracking-wider text-primary">YOUR CART</h2>

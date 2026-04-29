@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useBranch } from "../context/BranchContext";
 import { useCustomer } from "../context/CustomerContext";
 import { calculateDeliveryFee, placeOrder } from "../lib/order-api";
+import { updateLastAddress } from "../lib/auth-api";
 import { tenant } from "../tenant.generated";
 
 interface Props {
@@ -27,7 +28,7 @@ type OrderType = "delivery" | "pickup";
 export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
   const { items, subtotal } = useCart();
   const { branch } = useBranch();
-  const { info, saveInfo, setSaveInfo, persist } = useCustomer();
+  const { info, saveInfo, setSaveInfo, persist, effectiveInfo, token, isLoggedIn } = useCustomer();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -49,13 +50,13 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Pre-fill from saved info on open
+  // Pre-fill from logged-in profile or saved guest info on open
   useEffect(() => {
     if (open) {
-      setName(info.name || "");
-      setPhone(info.phone || "");
-      setEmail(info.email || "");
-      setAddress(info.address || "");
+      setName(effectiveInfo.name || "");
+      setPhone(effectiveInfo.phone || "");
+      setEmail(effectiveInfo.email || "");
+      setAddress(effectiveInfo.address || "");
       setNotes("");
       setOrderType("delivery");
       setError("");
@@ -64,7 +65,7 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
       setFeeInfo(null);
       setDeliveryFee(DEFAULT_FEE);
     }
-  }, [open, info]);
+  }, [open, effectiveInfo]);
 
   const searchAddress = useCallback(
     async (addr?: string) => {
@@ -168,6 +169,13 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
           address: orderType === "delivery" ? confirmedAddress : info.address,
         });
 
+        // If logged in and we have a confirmed delivery address, save it to the profile
+        if (isLoggedIn && token && orderType === "delivery" && confirmedAddress) {
+          updateLastAddress(token, confirmedAddress).catch(() => {
+            // Non-fatal - address save is best-effort
+          });
+        }
+
         // Save active order id for header pill
         try {
           localStorage.setItem("vc_active_order", orderId);
@@ -201,7 +209,7 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -209,7 +217,8 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-card rounded-xl w-full max-w-md p-6 relative shadow-lg max-h-[90vh] overflow-y-auto border border-primary/20"
+          style={{ backgroundColor: "#ffffff" }}
+          className="rounded-xl w-full max-w-md p-6 relative shadow-2xl max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <button

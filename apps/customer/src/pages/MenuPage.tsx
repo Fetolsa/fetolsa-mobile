@@ -1,8 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { Browser } from "@capacitor/browser";
 import { fetchMenu, fetchBranches } from "../lib/menu-api";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
+import type { CustomerOrder } from "../lib/auth-api";
 import { useBranch } from "../context/BranchContext";
+import { useCart } from "../context/CartContext";
+import { useCustomer } from "../context/CustomerContext";
 import { MenuHeader } from "../components/MenuHeader";
 import { BranchSelector } from "../components/BranchSelector";
 import { CategoryNav } from "../components/CategoryNav";
@@ -10,8 +14,9 @@ import { MenuItemCard } from "../components/MenuItemCard";
 import { MenuItemModal } from "../components/MenuItemModal";
 import { CartDrawer } from "../components/CartDrawer";
 import { CheckoutModal } from "../components/CheckoutModal";
-import { useCart } from "../context/CartContext";
-import { Browser } from "@capacitor/browser";
+import { LoginModal } from "../components/LoginModal";
+import { AccountDrawer } from "../components/AccountDrawer";
+import { EmailPrompt } from "../components/EmailPrompt";
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -20,11 +25,35 @@ export default function MenuPage() {
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
-  const { clear: clearCart } = useCart();
+  const { clear: clearCart, addItem } = useCart();
+  const { needsEmailPrompt, setNeedsEmailPrompt } = useCustomer();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  // Reorder helper: replace cart with past order's items, open cart drawer.
+  // Notes are not carried over (they were specific to that order). Quantities are.
+  const handleReorder = (order: CustomerOrder) => {
+    if (!order.items || order.items.length === 0) return;
+    clearCart();
+    order.items.forEach((it) => {
+      addItem({
+        item_code: it.item_code,
+        item_name: it.item_name,
+        qty: it.qty,
+        rate: it.rate,
+      });
+    });
+    setCartOpen(true);
+  };
+
+  const handleViewOrder = (orderId: string) => {
+    // Navigate via hash router to track page
+    window.location.hash = `#/track/${orderId}`;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -72,9 +101,6 @@ export default function MenuPage() {
 
   const handleOrderPlaced = async (orderId: string, paymentUrl: string) => {
     console.log("[order placed]", orderId, "opening Paystack");
-    // Order is already in Frappe at this point. Clear cart now so the
-    // user returns to a clean menu after payment regardless of how they
-    // come back (deep link, manual return, browser back).
     clearCart();
     try {
       await Browser.open({ url: paymentUrl, presentationStyle: "popover" });
@@ -85,7 +111,11 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <MenuHeader onCartOpen={() => setCartOpen(true)} />
+      <MenuHeader
+        onCartOpen={() => setCartOpen(true)}
+        onAccountOpen={() => setAccountOpen(true)}
+        onSignInOpen={() => setLoginOpen(true)}
+      />
       <BranchSelector branches={branches} />
       <CategoryNav
         categories={categories}
@@ -161,6 +191,17 @@ export default function MenuPage() {
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         onOrderPlaced={handleOrderPlaced}
+      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <AccountDrawer
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        onReorder={handleReorder}
+        onViewOrder={handleViewOrder}
+      />
+      <EmailPrompt
+        open={needsEmailPrompt}
+        onClose={() => setNeedsEmailPrompt(false)}
       />
     </div>
   );

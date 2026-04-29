@@ -40,7 +40,7 @@ export function MenuItemModal({ item, onClose }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 bg-background/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-end sm:items-center justify-center p-4"
           onClick={onClose}
         >
           <motion.div
@@ -48,7 +48,8 @@ export function MenuItemModal({ item, onClose }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="bg-card rounded-xl w-full max-w-md p-6 relative shadow-lg border border-primary/20"
+            style={{ backgroundColor: "#ffffff" }}
+            className="rounded-xl w-full max-w-md p-6 relative shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -96,7 +97,8 @@ export function MenuItemModal({ item, onClose }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Special instructions (optional)"
-              className="w-full mt-4 p-3 bg-muted rounded-lg text-sm text-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
+              style={{ backgroundColor: "#f3efe8" }}
+              className="w-full mt-4 p-3 rounded-lg text-sm text-foreground resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
             />
 
             <button
