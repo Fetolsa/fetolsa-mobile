@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { LayoutGrid } from "lucide-react";
-import { Browser } from "@capacitor/browser";
 import { fetchMenu, fetchBranches } from "../lib/menu-api";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 import type { CustomerOrder } from "../lib/auth-api";
@@ -107,31 +106,10 @@ export default function MenuPage() {
     console.log("[order placed]", orderId, "opening Paystack");
     clearCart();
 
-    // Belt-and-suspenders post-payment routing:
-    // 1. Try the deep link path: Paystack redirects to vchief://payment/callback?order_id=X
-    //    which the AndroidManifest intercepts and routes via App.tsx DeepLinkRouter.
-    // 2. Fallback: if the user manually closes the Custom Tab (or the deep link doesn't
-    //    fire), we still navigate to the order callback page so they can see status.
-    let browserFinishedListener: { remove: () => void } | null = null;
-    try {
-      browserFinishedListener = await Browser.addListener("browserFinished", () => {
-        console.log("[paystack browser closed] navigating to order callback");
-        window.location.hash = `#/order/${orderId}`;
-        if (browserFinishedListener) {
-          browserFinishedListener.remove();
-          browserFinishedListener = null;
-        }
-      });
-
-      await Browser.open({ url: paymentUrl, presentationStyle: "fullscreen" });
-    } catch (err) {
-      console.error("[paystack browser open failed]", err);
-      if (browserFinishedListener) {
-        browserFinishedListener.remove();
-      }
-      // Last resort: nav in same window
-      window.location.href = paymentUrl;
-    }
+    // System browser opens Paystack. After payment, Paystack redirects to
+    // vchief://payment/callback?order_id=X which Android intercepts via the
+    // intent-filter in AndroidManifest.xml, routing back into the app.
+    window.location.href = paymentUrl;
   };
 
   const handleTabSelect = (tab: NavTab) => {

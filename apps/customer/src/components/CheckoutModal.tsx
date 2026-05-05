@@ -5,6 +5,7 @@ import { useCart } from "../context/CartContext";
 import { useBranch } from "../context/BranchContext";
 import { useCustomer } from "../context/CustomerContext";
 import { calculateDeliveryFee, placeOrder } from "../lib/order-api";
+import { pickPickupBranch, type PickupBranch } from "../lib/pickup-api";
 import { updateLastAddress } from "../lib/auth-api";
 import { tenant } from "../tenant.generated";
 
@@ -22,6 +23,7 @@ const DELIVERY_TIERS = [
   { label: "20km+", fee: "\u20A620,500" },
 ];
 const DEFAULT_FEE = 20500;
+const PAYMENT_CALLBACK_URL = "https://www.villagechiefrestaurant.com/#/paystack-return";
 
 type OrderType = "delivery" | "pickup";
 
@@ -43,14 +45,23 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
     distance_km: number | null;
     duration: string;
     formatted_address: string;
+    customer_lat: number | null;
+    customer_lng: number | null;
+    routing_branch: string | null;
   } | null>(null);
   const [addressConfirmed, setAddressConfirmed] = useState(false);
   const [confirmedAddress, setConfirmedAddress] = useState("");
 
+  // Smart pickup
+  const [pickupBranch, setPickupBranch] = useState<
+    (PickupBranch & { distance_km: number }) | null
+  >(null);
+  const [pickupLoading, setPickupLoading] = useState(false);
+  const [pickupOutOfRange, setPickupOutOfRange] = useState(false);
+
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Pre-fill from logged-in profile or saved guest info on open
   useEffect(() => {
     if (open) {
       setName(effectiveInfo.name || "");
@@ -64,8 +75,42 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
       setConfirmedAddress("");
       setFeeInfo(null);
       setDeliveryFee(DEFAULT_FEE);
+      setPickupBranch(null);
+      setPickupOutOfRange(false);
     }
   }, [open, effectiveInfo]);
+
+  // Smart pickup: when on Pickup tab AND address confirmed -> resolve nearest branch
+  useEffect(() => {
+    if (orderType !== "pickup") return;
+    if (!feeInfo?.customer_lat || !feeInfo?.customer_lng) return;
+    if (!addressConfirmed) return;
+
+    let cancelled = false;
+    setPickupLoading(true);
+    setPickupOutOfRange(false);
+    pickPickupBranch(feeInfo.customer_lat, feeInfo.customer_lng)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.status === "ok" && res.branch) {
+          setPickupBranch(res.branch);
+        } else if (res.status === "out_of_range") {
+          setPickupBranch(null);
+          setPickupOutOfRange(true);
+        } else {
+          setPickupBranch(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPickupBranch(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPickupLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orderType, addressConfirmed, feeInfo?.customer_lat, feeInfo?.customer_lng]);
 
   const searchAddress = useCallback(
     async (addr?: string) => {
@@ -82,6 +127,9 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
             distance_km: result.distance_km,
             duration: result.duration,
             formatted_address: result.formatted_address,
+            customer_lat: result.customer_lat,
+            customer_lng: result.customer_lng,
+            routing_branch: result.routing_branch || null,
           });
         } else {
           setDeliveryFee(DEFAULT_FEE);
@@ -110,6 +158,8 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
     setFeeInfo(null);
     setDeliveryFee(DEFAULT_FEE);
     setAddress("");
+    setPickupBranch(null);
+    setPickupOutOfRange(false);
   };
 
   const onAddressChange = (v: string) => {
@@ -119,11 +169,30 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
       setConfirmedAddress("");
       setDeliveryFee(DEFAULT_FEE);
       setFeeInfo(null);
+      setPickupBranch(null);
+      setPickupOutOfRange(false);
     }
   };
 
   const effectiveFee = orderType === "pickup" ? 0 : deliveryFee;
   const total = items.length > 0 ? subtotal + effectiveFee : 0;
+
+  // Branch the order should be routed to.
+  // Pickup with smart-resolved branch -> use that. Otherwise use routing_branch from delivery
+  // calc (which is the auto-resolved nearest branch for the customer's address).
+  // Otherwise fall back to user's selected branch.
+  const orderBranch =
+    orderType === "pickup" && pickupBranch
+      ? pickupBranch.name
+      : feeInfo?.routing_branch || branch;
+
+  const fallbackBranchName = branch || "selected branch";
+  const fallbackBranchAddress =
+    (branch && tenant.branchAddresses?.[branch]) ||
+    tenant.contact?.address ||
+    "Address not configured";
+  const pickupCardName = pickupBranch ? pickupBranch.name : fallbackBranchName;
+  const pickupCardAddress = pickupBranch ? pickupBranch.address : fallbackBranchAddress;
 
   const handleSubmit = async () => {
     setError("");
@@ -135,7 +204,7 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
       setError("Please search and confirm your delivery address");
       return;
     }
-    if (!branch) {
+    if (!orderBranch) {
       setError("Please select a branch first");
       return;
     }
@@ -152,16 +221,16 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
         customer_email: email.trim() || undefined,
         delivery_address: orderType === "pickup" ? "Pickup" : confirmedAddress,
         delivery_notes: notes.trim() || undefined,
-        branch,
+        branch: orderBranch,
         items,
         delivery_fee: orderType === "pickup" ? 0 : deliveryFee,
         order_type: orderType === "pickup" ? "Pickup" : "Delivery",
+        payment_callback_url: PAYMENT_CALLBACK_URL,
       });
 
       if (result?.status === "ok" && result.payment_url) {
         const orderId = result.order_id || result.name || "";
 
-        // Persist customer info if toggle is on
         persist({
           name: name.trim(),
           phone: phone.trim(),
@@ -169,14 +238,10 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
           address: orderType === "delivery" ? confirmedAddress : info.address,
         });
 
-        // If logged in and we have a confirmed delivery address, save it to the profile
         if (isLoggedIn && token && orderType === "delivery" && confirmedAddress) {
-          updateLastAddress(token, confirmedAddress).catch(() => {
-            // Non-fatal - address save is best-effort
-          });
+          updateLastAddress(token, confirmedAddress).catch(() => {});
         }
 
-        // Save active order id for header pill
         try {
           localStorage.setItem("vc_active_order", orderId);
           localStorage.setItem("vc_active_order_id", orderId);
@@ -293,18 +358,25 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               >
                 <p
                   style={{ color: "#1a1a1a" }}
-                  className="font-condensed font-bold uppercase tracking-wide mb-1"
+                  className="font-condensed font-bold uppercase tracking-wide mb-1 flex items-center gap-2"
                 >
-                  Pickup at {branch || "selected branch"}
+                  Pickup at {pickupCardName}
+                  {pickupLoading && <Loader2 className="w-3.5 h-3.5 animate-spin opacity-70" />}
                 </p>
                 <p style={{ color: "#1a1a1a" }} className="font-medium">
                   {tenant.displayName}
                 </p>
-                <p className="text-muted-foreground mt-0.5">
-                  {(branch && tenant.branchAddresses?.[branch]) ||
-                    tenant.contact?.address ||
-                    "Address not configured"}
-                </p>
+                <p className="text-muted-foreground mt-0.5">{pickupCardAddress}</p>
+                {pickupBranch && (
+                  <p className="text-xs text-primary mt-2 font-medium">
+                    {pickupBranch.distance_km}km from your address &middot; closest branch
+                  </p>
+                )}
+                {pickupOutOfRange && (
+                  <p className="text-xs text-destructive mt-2">
+                    No branch within range of your address. Please choose delivery, or pick up from {fallbackBranchName}.
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground mt-2">
                   No delivery fee &middot; Show your confirmation code on arrival
                 </p>
@@ -384,6 +456,11 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
                   {feeInfo?.distance_km}km &middot; ~{feeInfo?.duration} &middot; &#8358;
                   {deliveryFee.toLocaleString()}
                 </div>
+                {feeInfo?.routing_branch && (
+                  <div className="text-xs text-muted-foreground ml-6">
+                    Delivering from {feeInfo.routing_branch}
+                  </div>
+                )}
               </div>
             )}
 
@@ -467,4 +544,3 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
     </AnimatePresence>
   );
 }
-
