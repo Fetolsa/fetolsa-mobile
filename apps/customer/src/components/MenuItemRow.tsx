@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import type { MenuItem } from "../types/menu";
 import { tenant } from "../tenant.generated";
-import { placeholderColor, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
+import { placeholderColor, placeholderImage, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
 
 interface Props {
   item: MenuItem;
@@ -11,6 +11,8 @@ interface Props {
 
 export function MenuItemRow({ item, index, onSelect }: Props) {
   const imageUrl = resolveImageUrl(item.image, tenant.apiBaseUrl);
+  const categoryImage = placeholderImage(item.item_name, item.category);
+  const effectiveImage = imageUrl || categoryImage;
   const initial = placeholderInitial(item.item_name);
   const placeholderBg = placeholderColor(item.item_name);
   const showDescription =
@@ -32,13 +34,13 @@ export function MenuItemRow({ item, index, onSelect }: Props) {
       {/* Image or letter placeholder */}
       <div
         style={{
-          backgroundColor: imageUrl ? undefined : placeholderBg,
+          backgroundColor: effectiveImage ? undefined : placeholderBg,
         }}
         className="w-14 h-14 rounded-lg shrink-0 overflow-hidden flex items-center justify-center"
       >
-        {imageUrl ? (
+        {effectiveImage ? (
           <img
-            src={imageUrl}
+            src={effectiveImage}
             alt={item.item_name}
             className="w-full h-full object-cover"
             loading="lazy"

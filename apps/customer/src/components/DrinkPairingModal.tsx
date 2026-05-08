@@ -1,10 +1,10 @@
-﻿import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { MenuItem } from "../types/menu";
 import { useCart } from "../context/CartContext";
 import { tenant } from "../tenant.generated";
-import { placeholderColor, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
+import { placeholderColor, placeholderImage, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
 
 interface Props {
   open: boolean;
@@ -86,6 +86,8 @@ export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
                 {pairedDrinks.map((drink) => {
                   const count = added[drink.item_code] || 0;
                   const imageUrl = resolveImageUrl(drink.image, tenant.apiBaseUrl);
+                  const categoryImage = placeholderImage(drink.item_name, drink.category);
+                  const effectiveImage = imageUrl || categoryImage;
                   const initial = placeholderInitial(drink.item_name);
                   const placeholderBg = placeholderColor(drink.item_name);
 
@@ -100,12 +102,12 @@ export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
                       className="rounded-2xl border overflow-hidden flex flex-col"
                     >
                       <div
-                        style={{ backgroundColor: imageUrl ? "#1a1a1a" : placeholderBg }}
+                        style={{ backgroundColor: effectiveImage ? "#1a1a1a" : placeholderBg }}
                         className="w-full aspect-[4/3] flex items-center justify-center relative"
                       >
-                        {imageUrl ? (
+                        {effectiveImage ? (
                           <img
-                            src={imageUrl}
+                            src={effectiveImage}
                             alt={drink.item_name}
                             className="w-full h-full object-cover"
                             onError={(e) => {

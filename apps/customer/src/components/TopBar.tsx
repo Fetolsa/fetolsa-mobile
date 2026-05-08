@@ -1,6 +1,6 @@
 ﻿import { User, ShoppingBag } from "lucide-react";
-import { tenant } from "../tenant.generated";
 import { useCart } from "../context/CartContext";
+import logoUrl from "../assets/villagechief-logo.png";
 
 interface Props {
   onAccountClick: () => void;
@@ -26,12 +26,11 @@ export function TopBar({ onAccountClick, onCartClick }: Props) {
           <User className="w-[22px] h-[22px]" />
         </button>
 
-        <h1
-          style={{ color: "#1a1a1a", letterSpacing: "0.08em" }}
-          className="font-display text-[22px] uppercase"
-        >
-          {tenant.displayName}
-        </h1>
+        <img
+          src={logoUrl}
+          alt="Village Chief"
+          className="h-9 w-auto object-contain"
+        />
 
         <button
           onClick={onCartClick}

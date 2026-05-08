@@ -1,10 +1,11 @@
 ﻿import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react";
 import type { CartItem } from "../types/menu";
 import {
-  TAKEAWAY_PACK_ITEM_CODE,
-  TAKEAWAY_PACK_CATEGORIES,
+  PACK_ITEM_CODES,
+  getPackKindForCategory,
+  type PackKind,
 } from "../lib/takeaway";
-import type { TakeawayPack } from "../lib/menu-api";
+import type { TakeawayPack, TakeawayPacks } from "../lib/menu-api";
 
 interface CartContextValue {
   items: CartItem[];
@@ -14,50 +15,52 @@ interface CartContextValue {
   clear: () => void;
   totalItems: number;
   subtotal: number;
-  takeawayPack: TakeawayPack | null;
-  setTakeawayPack: (pack: TakeawayPack | null) => void;
-  requiredPackCount: number;
+  takeawayPacks: TakeawayPacks;
+  setTakeawayPacks: (packs: TakeawayPacks) => void;
+  requiredPackCounts: Record<PackKind, number>;
 }
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "vc_cart";
 
-function computeRequiredPackCount(items: CartItem[]): number {
-  let count = 0;
-  for (const it of items) {
-    if (it.item_code === TAKEAWAY_PACK_ITEM_CODE) continue;
-    if (it.category && TAKEAWAY_PACK_CATEGORIES.has(it.category)) {
-      count += it.qty;
-    }
-  }
-  return count;
+function emptyCounts(): Record<PackKind, number> {
+  return { small: 0, big: 0, drink: 0, palmwine: 0, beer: 0 };
 }
 
-function applyPackSync(
-  items: CartItem[],
-  pack: TakeawayPack | null,
-): CartItem[] {
-  if (!pack) return items;
-  const required = computeRequiredPackCount(items);
-  const others = items.filter((i) => i.item_code !== TAKEAWAY_PACK_ITEM_CODE);
-  const existing = items.find((i) => i.item_code === TAKEAWAY_PACK_ITEM_CODE);
-
-  if (required === 0) {
-    return others;
+function computeRequiredCounts(items: CartItem[]): Record<PackKind, number> {
+  const counts = emptyCounts();
+  for (const it of items) {
+    if (PACK_ITEM_CODES.has(it.item_code)) continue;
+    const kind = getPackKindForCategory(it.category);
+    if (kind) counts[kind] += it.qty;
   }
+  return counts;
+}
 
-  const finalQty = Math.max(required, existing?.qty ?? 0);
-  return [
-    ...others,
-    {
+function applyPackSync(items: CartItem[], packs: TakeawayPacks): CartItem[] {
+  const nonPack = items.filter((i) => !PACK_ITEM_CODES.has(i.item_code));
+  const required = computeRequiredCounts(nonPack);
+  const result: CartItem[] = [...nonPack];
+
+  (Object.keys(required) as PackKind[]).forEach((kind) => {
+    const requiredQty = required[kind];
+    const pack = packs[kind] as TakeawayPack | null | undefined;
+    if (!pack || requiredQty === 0) return;
+
+    const existing = items.find((i) => i.item_code === pack.item_code);
+    const finalQty = Math.max(requiredQty, existing?.qty ?? 0);
+
+    result.push({
       item_code: pack.item_code,
       item_name: pack.item_name,
       qty: finalQty,
       rate: pack.rate,
       auto_added: true,
-    },
-  ];
+    });
+  });
+
+  return result;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -70,7 +73,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const [takeawayPack, setTakeawayPack] = useState<TakeawayPack | null>(null);
+  const [takeawayPacks, setTakeawayPacks] = useState<TakeawayPacks>({});
 
   useEffect(() => {
     try {
@@ -80,12 +83,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items]);
 
-  // Whenever the pack info loads, sync the cart line
+  // Re-sync packs whenever pack info loads/changes
   useEffect(() => {
-    if (takeawayPack) {
-      setItems((prev) => applyPackSync(prev, takeawayPack));
+    if (Object.keys(takeawayPacks).length > 0) {
+      setItems((prev) => applyPackSync(prev, takeawayPacks));
     }
-  }, [takeawayPack]);
+  }, [takeawayPacks]);
 
   const addItem = (item: CartItem) => {
     setItems((prev) => {
@@ -94,43 +97,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (existing) {
         next = prev.map((i) =>
           i.item_code === item.item_code
-            ? { ...i, qty: i.qty + item.qty, notes: item.notes || i.notes, category: item.category || i.category }
+            ? {
+                ...i,
+                qty: i.qty + item.qty,
+                notes: item.notes || i.notes,
+                category: item.category || i.category,
+              }
             : i,
         );
       } else {
         next = [...prev, item];
       }
-      return applyPackSync(next, takeawayPack);
+      return applyPackSync(next, takeawayPacks);
     });
   };
 
   const removeItem = (itemCode: string) => {
-    if (itemCode === TAKEAWAY_PACK_ITEM_CODE) return; // mandatory, cannot remove
-    setItems((prev) => applyPackSync(prev.filter((i) => i.item_code !== itemCode), takeawayPack));
+    if (PACK_ITEM_CODES.has(itemCode)) return; // cannot remove auto-added packs
+    setItems((prev) => applyPackSync(prev.filter((i) => i.item_code !== itemCode), takeawayPacks));
   };
 
   const updateQty = (itemCode: string, qty: number) => {
     setItems((prev) => {
-      // Pack: cannot drop below required count
-      if (itemCode === TAKEAWAY_PACK_ITEM_CODE) {
-        const required = computeRequiredPackCount(prev);
-        const clamped = Math.max(qty, required);
+      // Pack item: cannot drop below required for its kind
+      if (PACK_ITEM_CODES.has(itemCode)) {
+        const required = computeRequiredCounts(prev.filter((i) => !PACK_ITEM_CODES.has(i.item_code)));
+        // Find which pack kind this code maps to
+        const kind = (Object.keys(takeawayPacks) as PackKind[]).find(
+          (k) => takeawayPacks[k]?.item_code === itemCode,
+        );
+        const minQty = kind ? required[kind] : 1;
+        const clamped = Math.max(qty, minQty);
         if (clamped <= 0) return prev;
         return prev.map((i) => (i.item_code === itemCode ? { ...i, qty: clamped } : i));
       }
       // Other items
       if (qty <= 0) {
-        return applyPackSync(prev.filter((i) => i.item_code !== itemCode), takeawayPack);
+        return applyPackSync(prev.filter((i) => i.item_code !== itemCode), takeawayPacks);
       }
       const next = prev.map((i) => (i.item_code === itemCode ? { ...i, qty } : i));
-      return applyPackSync(next, takeawayPack);
+      return applyPackSync(next, takeawayPacks);
     });
   };
 
   const clear = () => setItems([]);
   const totalItems = items.reduce((s, i) => s + i.qty, 0);
   const subtotal = items.reduce((s, i) => s + i.rate * i.qty, 0);
-  const requiredPackCount = useMemo(() => computeRequiredPackCount(items), [items]);
+  const requiredPackCounts = useMemo(() => computeRequiredCounts(items), [items]);
 
   return (
     <CartContext.Provider
@@ -142,9 +155,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         clear,
         totalItems,
         subtotal,
-        takeawayPack,
-        setTakeawayPack,
-        requiredPackCount,
+        takeawayPacks,
+        setTakeawayPacks,
+        requiredPackCounts,
       }}
     >
       {children}

@@ -1,10 +1,10 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Minus, Plus } from "lucide-react";
 import type { MenuItem } from "../types/menu";
 import { useCart } from "../context/CartContext";
 import { tenant } from "../tenant.generated";
-import { placeholderColor, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
+import { placeholderColor, placeholderImage, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
 
 interface Props {
   item: MenuItem | null;
@@ -37,6 +37,8 @@ export function MenuItemModal({ item, onClose }: Props) {
   };
 
   const imageUrl = item ? resolveImageUrl(item.image, tenant.apiBaseUrl) : null;
+  const categoryImage = item ? placeholderImage(item.item_name, item.category) : null;
+  const effectiveImage = imageUrl || categoryImage;
   const initial = item ? placeholderInitial(item.item_name) : "";
   const placeholderBg = item ? placeholderColor(item.item_name) : "#f3efe8";
   const showDescription =
@@ -65,12 +67,12 @@ export function MenuItemModal({ item, onClose }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              style={{ backgroundColor: imageUrl ? "#1a1a1a" : placeholderBg }}
+              style={{ backgroundColor: effectiveImage ? "#1a1a1a" : placeholderBg }}
               className="relative w-full h-[220px] shrink-0 flex items-center justify-center overflow-hidden"
             >
-              {imageUrl ? (
+              {effectiveImage ? (
                 <img
-                  src={imageUrl}
+                  src={effectiveImage}
                   alt={item.item_name}
                   className="w-full h-full object-cover"
                   onError={(e) => {

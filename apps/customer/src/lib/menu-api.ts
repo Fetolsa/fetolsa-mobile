@@ -1,4 +1,4 @@
-﻿import { tenant } from "../tenant.generated";
+import { tenant } from "../tenant.generated";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 
 const API_BASE = `${tenant.apiBaseUrl}/api/method`;
@@ -101,13 +101,17 @@ export interface TakeawayPack {
   image?: string;
 }
 
-export async function fetchTakeawayPack(): Promise<TakeawayPack | null> {
+export type PackKind = "small" | "big" | "drink" | "palmwine" | "beer";
+
+export type TakeawayPacks = Partial<Record<PackKind, TakeawayPack | null>>;
+
+export async function fetchTakeawayPacks(): Promise<TakeawayPacks> {
   try {
-    const data = await frappeGet<{ status: string; pack: TakeawayPack | null }>(
-      "/fetolsa_api.delivery.menu.get_takeaway_pack",
+    const data = await frappeGet<{ status: string; packs: TakeawayPacks }>(
+      "/fetolsa_api.delivery.menu.get_takeaway_packs",
     );
-    return data?.pack ?? null;
+    return data?.packs ?? {};
   } catch {
-    return null;
+    return {};
   }
 }

@@ -1,6 +1,6 @@
-﻿import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
-import { fetchMenu, fetchBranches, fetchTakeawayPack } from "../lib/menu-api";
+import { fetchMenu, fetchBranches, fetchTakeawayPacks } from "../lib/menu-api";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 import type { CustomerOrder } from "../lib/auth-api";
 import { useBranch } from "../context/BranchContext";
@@ -8,7 +8,7 @@ import { useCart } from "../context/CartContext";
 import { useCustomer } from "../context/CustomerContext";
 import { TopBar } from "../components/TopBar";
 import { LocationBar } from "../components/LocationBar";
-import { HeroCarousel } from "../components/HeroCarousel";
+import { TimeAwareHero } from "../components/TimeAwareHero";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryChips } from "../components/CategoryChips";
 import { FloatingCartBar } from "../components/FloatingCartBar";
@@ -23,6 +23,38 @@ import { LoginModal } from "../components/LoginModal";
 import { AccountDrawer } from "../components/AccountDrawer";
 import { EmailPrompt } from "../components/EmailPrompt";
 import { BottomNav, type NavTab } from "../components/BottomNav";
+
+const MEAL_SLOT_CATEGORIES: Record<"breakfast" | "lunch" | "dinner", string[]> = {
+  breakfast: ["Breakfast", "Intercontinental Breakfast", "Dan Kano"],
+  lunch: ["Soups", "Special Soups", "Pepper Soup", "Amala and Co", "Local Delicacies", "Village Chief Locals", "Village Chiefs Locals", "Main Course", "Noodles and Spaghetti", "Sides", "VC Extra Specials"],
+  dinner: ["Grills", "Suya", "Platters", "Pepper Soup", "Soups", "Special Soups", "VC Extra Specials"],
+};
+
+function getMealSlotForSort(date: Date = new Date()): "breakfast" | "lunch" | "dinner" {
+  const h = date.getHours();
+  if (h >= 6 && h < 11) return "breakfast";
+  if (h >= 11 && h < 16) return "lunch";
+  return "dinner";
+}
+
+function sortCategoriesByMealSlot(cats: MenuCategory[]): MenuCategory[] {
+  const slot = getMealSlotForSort();
+  const priority = MEAL_SLOT_CATEGORIES[slot];
+  const inPriority: MenuCategory[] = [];
+  const others: MenuCategory[] = [];
+  const seen = new Set<string>();
+  for (const name of priority) {
+    const found = cats.find((c) => c.name === name);
+    if (found && !seen.has(found.name)) {
+      inPriority.push(found);
+      seen.add(found.name);
+    }
+  }
+  for (const c of cats) {
+    if (!seen.has(c.name)) others.push(c);
+  }
+  return [...inPriority, ...others];
+}
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
@@ -41,7 +73,7 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
-  const { items: cartItems, clear: clearCart, addItem, setTakeawayPack } = useCart();
+  const { items: cartItems, clear: clearCart, addItem, setTakeawayPacks } = useCart();
   const { needsEmailPrompt, setNeedsEmailPrompt, isLoggedIn, orders } = useCustomer();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -54,6 +86,8 @@ export default function MenuPage() {
     }
     return map;
   }, [categories]);
+
+  const sortedCategories = useMemo(() => sortCategoriesByMealSlot(categories), [categories]);
 
   const computeSuggestedDrinks = (): MenuItem[] => {
     const cartCodes = new Set(cartItems.map((c) => c.item_code));
@@ -122,10 +156,10 @@ export default function MenuPage() {
       })
       .catch(() => {});
 
-    fetchTakeawayPack()
+    fetchTakeawayPacks()
       .then((pack) => {
         if (cancelled) return;
-        setTakeawayPack(pack);
+        setTakeawayPacks(pack);
       })
       .catch(() => {});
 
@@ -214,16 +248,16 @@ export default function MenuPage() {
         onCartClick={() => setCartOpen(true)}
       />
       <LocationBar branches={branches} />
-      <HeroCarousel />
+      <TimeAwareHero itemsByCode={itemsByCode} onSelectItem={setSelectedItem} />
       <SearchBar onClick={() => setSearchSheetOpen(true)} />
       <CategoryChips
-        categories={categories}
+        categories={sortedCategories}
         active={activeCategory}
         onSelect={scrollToCategory}
       />
 
       <main className="container max-w-md mx-auto px-3.5 py-4 space-y-7">
-        {categories.map((cat) => (
+        {sortedCategories.map((cat) => (
           <section
             key={cat.name}
             ref={(el) => {

@@ -1,4 +1,4 @@
-﻿import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Minus, Plus, Trash2, Package } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function CartDrawer({ open, onClose, onCheckout }: Props) {
-  const { items, updateQty, removeItem, subtotal, requiredPackCount } = useCart();
+  const { items, updateQty, removeItem, subtotal, requiredPackCounts, takeawayPacks } = useCart();
 
   return (
     <AnimatePresence>
@@ -58,7 +58,13 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
               )}
               {items.map((item) => {
                 const isAuto = Boolean(item.auto_added);
-                const minQty = isAuto ? requiredPackCount : 1;
+                let minQty = 1;
+                if (isAuto) {
+                  const matchedKind = (Object.keys(takeawayPacks) as Array<keyof typeof takeawayPacks>).find(
+                    (k) => takeawayPacks[k]?.item_code === item.item_code,
+                  );
+                  minQty = matchedKind ? (requiredPackCounts[matchedKind as keyof typeof requiredPackCounts] || 1) : 1;
+                }
                 const canDecrease = item.qty > minQty;
 
                 return (
