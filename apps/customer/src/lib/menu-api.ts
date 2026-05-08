@@ -1,4 +1,4 @@
-import { tenant } from "../tenant.generated";
+﻿import { tenant } from "../tenant.generated";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 
 const API_BASE = `${tenant.apiBaseUrl}/api/method`;
@@ -26,6 +26,7 @@ interface RawMenuItem {
   image?: string;
   item_group?: string;
   category?: string;
+  paired_drinks?: string[];
 }
 
 interface RawMenuResponse {
@@ -42,6 +43,7 @@ function normalizeItem(raw: RawMenuItem, fallbackCategory: string): MenuItem {
     rate: raw.rate || raw.price || 0,
     image: raw.image,
     category: raw.item_group || raw.category || fallbackCategory,
+    paired_drinks: Array.isArray(raw.paired_drinks) ? raw.paired_drinks : [],
   };
 }
 
@@ -49,10 +51,8 @@ export async function fetchMenu(): Promise<MenuCategory[]> {
   const data = await frappeGet<RawMenuResponse | RawMenuItem[]>(
     "/fetolsa_api.delivery.menu.get_delivery_menu",
   );
-
   const cats: MenuCategory[] = [];
   const menuData = (data as RawMenuResponse)?.menu ?? data;
-
   if (menuData && typeof menuData === "object" && !Array.isArray(menuData)) {
     for (const [name, items] of Object.entries(menuData)) {
       if (Array.isArray(items)) {
@@ -74,7 +74,6 @@ export async function fetchMenu(): Promise<MenuCategory[]> {
       catMap.get(cat)!.items.push(normalizeItem(raw, cat));
     }
   }
-
   return cats;
 }
 
@@ -93,4 +92,22 @@ export async function fetchBranches(): Promise<Branch[]> {
     if (b.name === "VC Online") return 1;
     return a.name.localeCompare(b.name);
   });
+}
+
+export interface TakeawayPack {
+  item_code: string;
+  item_name: string;
+  rate: number;
+  image?: string;
+}
+
+export async function fetchTakeawayPack(): Promise<TakeawayPack | null> {
+  try {
+    const data = await frappeGet<{ status: string; pack: TakeawayPack | null }>(
+      "/fetolsa_api.delivery.menu.get_takeaway_pack",
+    );
+    return data?.pack ?? null;
+  } catch {
+    return null;
+  }
 }

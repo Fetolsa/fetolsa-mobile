@@ -1,10 +1,11 @@
-export interface MenuItem {
+﻿export interface MenuItem {
   item_code: string;
   item_name: string;
   description?: string;
   rate: number;
   image?: string;
   category: string;
+  paired_drinks?: string[];
 }
 
 export interface MenuCategory {
@@ -24,4 +25,6 @@ export interface CartItem {
   qty: number;
   rate: number;
   notes?: string;
+  category?: string;
+  auto_added?: boolean;
 }

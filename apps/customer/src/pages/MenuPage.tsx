@@ -1,16 +1,20 @@
-import { useEffect, useState, useRef } from "react";
+﻿import { useEffect, useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
-import { LayoutGrid } from "lucide-react";
-import { fetchMenu, fetchBranches } from "../lib/menu-api";
+import { fetchMenu, fetchBranches, fetchTakeawayPack } from "../lib/menu-api";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 import type { CustomerOrder } from "../lib/auth-api";
 import { useBranch } from "../context/BranchContext";
 import { useCart } from "../context/CartContext";
 import { useCustomer } from "../context/CustomerContext";
-import { MenuHeader } from "../components/MenuHeader";
-import { BranchSelector } from "../components/BranchSelector";
+import { TopBar } from "../components/TopBar";
+import { LocationBar } from "../components/LocationBar";
+import { HeroCarousel } from "../components/HeroCarousel";
+import { SearchBar } from "../components/SearchBar";
+import { CategoryChips } from "../components/CategoryChips";
+import { FloatingCartBar } from "../components/FloatingCartBar";
 import { MenuItemRow } from "../components/MenuItemRow";
 import { MenuItemModal } from "../components/MenuItemModal";
+import { DrinkPairingModal } from "../components/DrinkPairingModal";
 import { CategorySheet } from "../components/CategorySheet";
 import { SearchSheet } from "../components/SearchSheet";
 import { CartDrawer } from "../components/CartDrawer";
@@ -25,6 +29,8 @@ export default function MenuPage() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [activeCategory, setActiveCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [pairingOpen, setPairingOpen] = useState(false);
+  const [pairingDrinks, setPairingDrinks] = useState<MenuItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -35,19 +41,48 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
-  const { clear: clearCart, addItem } = useCart();
+  const { items: cartItems, clear: clearCart, addItem, setTakeawayPack } = useCart();
   const { needsEmailPrompt, setNeedsEmailPrompt, isLoggedIn, orders } = useCustomer();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const itemsByCode = useMemo(() => {
+    const map = new Map<string, MenuItem>();
+    for (const cat of categories) {
+      for (const item of cat.items) {
+        map.set(item.item_code, item);
+      }
+    }
+    return map;
+  }, [categories]);
+
+  const computeSuggestedDrinks = (): MenuItem[] => {
+    const cartCodes = new Set(cartItems.map((c) => c.item_code));
+    const drinkCodes = new Set<string>();
+    for (const cartItem of cartItems) {
+      const menuItem = itemsByCode.get(cartItem.item_code);
+      if (!menuItem || !menuItem.paired_drinks) continue;
+      for (const code of menuItem.paired_drinks) {
+        if (!cartCodes.has(code)) {
+          drinkCodes.add(code);
+        }
+      }
+    }
+    return Array.from(drinkCodes)
+      .map((code) => itemsByCode.get(code))
+      .filter((d): d is MenuItem => Boolean(d));
+  };
 
   const handleReorder = (order: CustomerOrder) => {
     if (!order.items || order.items.length === 0) return;
     clearCart();
     order.items.forEach((it) => {
+      const menuItem = itemsByCode.get(it.item_code);
       addItem({
         item_code: it.item_code,
         item_name: it.item_name,
         qty: it.qty,
         rate: it.rate,
+        category: menuItem?.category,
       });
     });
     setCartOpen(true);
@@ -87,10 +122,36 @@ export default function MenuPage() {
       })
       .catch(() => {});
 
+    fetchTakeawayPack()
+      .then((pack) => {
+        if (cancelled) return;
+        setTakeawayPack(pack);
+      })
+      .catch(() => {});
+
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (categories.length === 0) return;
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY + 140;
+      let current = categories[0].name;
+      for (const cat of categories) {
+        const el = sectionRefs.current[cat.name];
+        if (el && el.offsetTop <= scrollY) {
+          current = cat.name;
+        }
+      }
+      setActiveCategory(current);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [categories]);
 
   const scrollToCategory = (name: string) => {
     setActiveCategory(name);
@@ -99,84 +160,102 @@ export default function MenuPage() {
 
   const handleCheckout = () => {
     setCartOpen(false);
+    const drinks = computeSuggestedDrinks();
+    if (drinks.length > 0) {
+      setPairingDrinks(drinks);
+      setPairingOpen(true);
+    } else {
+      setCheckoutOpen(true);
+    }
+  };
+
+  const handlePairingClose = () => {
+    setPairingOpen(false);
     setCheckoutOpen(true);
   };
 
   const handleOrderPlaced = async (orderId: string, paymentUrl: string) => {
     console.log("[order placed]", orderId, "opening Paystack");
     clearCart();
-
-    // System browser opens Paystack. After payment, Paystack redirects to
-    // vchief://payment/callback?order_id=X which Android intercepts via the
-    // intent-filter in AndroidManifest.xml, routing back into the app.
     window.location.href = paymentUrl;
+  };
+
+  const handleAccountClick = () => {
+    if (isLoggedIn) {
+      setAccountOpen(true);
+    } else {
+      setLoginOpen(true);
+    }
   };
 
   const handleTabSelect = (tab: NavTab) => {
     setActiveTab(tab);
     if (tab === "menu") {
-      // already on menu - smooth scroll to top
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (tab === "orders") {
-      // For now, navigate to most recent order's track page if logged in
       if (isLoggedIn && orders.length > 0) {
         window.location.hash = `#/track/${orders[0].name}`;
       } else if (!isLoggedIn) {
         setLoginOpen(true);
       } else {
-        // Logged in but no orders - open account drawer instead
         setAccountOpen(true);
       }
     } else if (tab === "account") {
-      if (isLoggedIn) {
-        setAccountOpen(true);
-      } else {
-        setLoginOpen(true);
-      }
+      handleAccountClick();
     } else if (tab === "cart") {
       setCartOpen(true);
     }
   };
 
   return (
-    <div
-      style={{ backgroundColor: "#faf7f2" }}
-      className="min-h-screen pb-20"
-    >
-      <MenuHeader onSearchOpen={() => setSearchSheetOpen(true)} />
-      <BranchSelector branches={branches} />
+    <div style={{ backgroundColor: "#faf7f2" }} className="min-h-screen pb-20">
+      <TopBar
+        onAccountClick={handleAccountClick}
+        onCartClick={() => setCartOpen(true)}
+      />
+      <LocationBar branches={branches} />
+      <HeroCarousel />
+      <SearchBar onClick={() => setSearchSheetOpen(true)} />
+      <CategoryChips
+        categories={categories}
+        active={activeCategory}
+        onSelect={scrollToCategory}
+      />
 
-      <main className="container max-w-md mx-auto px-4 py-5 space-y-8">
+      <main className="container max-w-md mx-auto px-3.5 py-4 space-y-7">
         {categories.map((cat) => (
           <section
             key={cat.name}
             ref={(el) => {
               sectionRefs.current[cat.name] = el;
             }}
-            className="scroll-mt-32"
+            className="scroll-mt-[110px]"
           >
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="flex items-center gap-3 mb-4"
+              className="flex items-baseline gap-2.5 mb-3.5"
             >
-              <div
-                style={{ backgroundColor: "#E60019" }}
-                className="w-1 h-7 rounded-full"
-              />
               <h2
-                style={{ color: "#1a1a1a", letterSpacing: "0.06em" }}
-                className="font-display text-2xl uppercase"
+                style={{
+                  color: "#1a1a1a",
+                  letterSpacing: "0.06em",
+                  borderBottom: "3px solid #E60019",
+                }}
+                className="font-display text-[26px] uppercase leading-none pb-1 inline-block"
               >
                 {cat.name}
               </h2>
-              <span className="text-xs text-muted-foreground font-condensed ml-auto">
+              <span
+                style={{ color: "#888", letterSpacing: "0.08em" }}
+                className="text-[11px] font-condensed uppercase ml-auto"
+              >
                 {cat.items.length} item{cat.items.length === 1 ? "" : "s"}
               </span>
             </motion.div>
 
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {cat.items.map((item, i) => (
                 <MenuItemRow
                   key={item.item_code}
@@ -220,20 +299,14 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating "Browse" pill Ã¢â‚¬â€ bottom-right, above the BottomNav */}
-      {categories.length > 0 && (
-        <button
-          onClick={() => setCategorySheetOpen(true)}
-          style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
-          className="fixed bottom-20 right-4 z-30 flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg font-condensed font-bold text-xs uppercase tracking-wide hover:opacity-90 transition-opacity"
-          aria-label="Browse categories"
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          Browse
-        </button>
-      )}
+      <FloatingCartBar onClick={() => setCartOpen(true)} />
 
       <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+      <DrinkPairingModal
+        open={pairingOpen}
+        pairedDrinks={pairingDrinks}
+        onClose={handlePairingClose}
+      />
       <CategorySheet
         open={categorySheetOpen}
         categories={categories}

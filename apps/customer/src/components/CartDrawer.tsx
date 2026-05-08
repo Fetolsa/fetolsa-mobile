@@ -1,5 +1,5 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Minus, Plus, Trash2 } from "lucide-react";
+﻿import { motion, AnimatePresence } from "framer-motion";
+import { X, Minus, Plus, Trash2, Package } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function CartDrawer({ open, onClose, onCheckout }: Props) {
-  const { items, updateQty, removeItem, subtotal } = useCart();
+  const { items, updateQty, removeItem, subtotal, requiredPackCount } = useCart();
 
   return (
     <AnimatePresence>
@@ -30,75 +30,138 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
             style={{ backgroundColor: "#ffffff" }}
             className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-sm shadow-2xl flex flex-col"
           >
-            <div className="flex items-center justify-between p-4 border-b border-primary/20">
-              <h2 className="font-display text-xl tracking-wider text-primary">YOUR CART</h2>
+            <div
+              style={{ borderColor: "#ebe6dd" }}
+              className="flex items-center justify-between px-4 h-[52px] border-b shrink-0"
+            >
+              <h2
+                style={{ color: "#1a1a1a", letterSpacing: "0.06em" }}
+                className="font-display text-xl uppercase"
+              >
+                Your Cart
+              </h2>
               <button
                 onClick={onClose}
-                className="p-1 hover:bg-muted rounded-lg transition-colors"
+                style={{ color: "#1a1a1a" }}
+                className="p-1.5 hover:bg-muted rounded-lg transition-colors"
                 aria-label="Close cart"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
               {items.length === 0 && (
                 <p className="text-muted-foreground text-center py-12 font-condensed">
                   Your cart is empty
                 </p>
               )}
-              {items.map((item) => (
-                <div
-                  key={item.item_code}
-                  className="bg-card rounded-lg p-3 flex items-center gap-3 border border-primary/10"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-condensed font-bold text-sm uppercase tracking-wide truncate text-foreground">
-                      {item.item_name}
-                    </p>
-                    <p className="price-badge mt-1 inline-block">
-                      &#8358;{(item.rate * item.qty).toLocaleString()}
-                    </p>
+              {items.map((item) => {
+                const isAuto = Boolean(item.auto_added);
+                const minQty = isAuto ? requiredPackCount : 1;
+                const canDecrease = item.qty > minQty;
+
+                return (
+                  <div
+                    key={item.item_code}
+                    style={{ backgroundColor: "#ffffff", borderColor: isAuto ? "#1a1a1a" : "#ebe6dd" }}
+                    className="rounded-xl p-3 flex items-center gap-3 border"
+                  >
+                    {isAuto && (
+                      <div
+                        style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                      >
+                        <Package className="w-4 h-4" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p
+                          style={{ color: "#1a1a1a" }}
+                          className="font-condensed font-bold text-[14px] uppercase tracking-wide leading-tight truncate"
+                        >
+                          {item.item_name}
+                        </p>
+                        {isAuto && (
+                          <span
+                            style={{ backgroundColor: "#fdecee", color: "#E60019", letterSpacing: "0.08em" }}
+                            className="font-condensed text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
+                          >
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <p
+                        style={{ color: "#E60019" }}
+                        className="font-condensed font-bold text-sm mt-0.5"
+                      >
+                        &#8358;{(item.rate * item.qty).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updateQty(item.item_code, item.qty - 1)}
+                        disabled={!canDecrease}
+                        style={{ color: "#1a1a1a" }}
+                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted transition-colors disabled:opacity-30"
+                        aria-label="Decrease quantity"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span
+                        style={{ color: "#1a1a1a" }}
+                        className="font-condensed font-bold text-sm w-5 text-center"
+                      >
+                        {item.qty}
+                      </span>
+                      <button
+                        onClick={() => updateQty(item.item_code, item.qty + 1)}
+                        style={{ color: "#1a1a1a" }}
+                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted transition-colors"
+                        aria-label="Increase quantity"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                      {!isAuto && (
+                        <button
+                          onClick={() => removeItem(item.item_code)}
+                          style={{ color: "#E60019" }}
+                          className="w-7 h-7 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors ml-0.5"
+                          aria-label="Remove item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => updateQty(item.item_code, item.qty - 1)}
-                      className="p-1 hover:bg-muted rounded transition-colors"
-                      aria-label="Decrease quantity"
-                    >
-                      <Minus className="w-3.5 h-3.5 text-primary" />
-                    </button>
-                    <span className="text-sm font-semibold w-5 text-center text-foreground">
-                      {item.qty}
-                    </span>
-                    <button
-                      onClick={() => updateQty(item.item_code, item.qty + 1)}
-                      className="p-1 hover:bg-muted rounded transition-colors"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-primary" />
-                    </button>
-                    <button
-                      onClick={() => removeItem(item.item_code)}
-                      className="p-1 text-destructive hover:bg-destructive/10 rounded transition-colors ml-1"
-                      aria-label="Remove item"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {items.length > 0 && (
-              <div className="border-t border-primary/20 p-4 space-y-3">
-                <div className="flex justify-between font-bold text-base text-primary">
-                  <span>Subtotal</span>
-                  <span>&#8358;{subtotal.toLocaleString()}</span>
+              <div
+                style={{ borderColor: "#ebe6dd" }}
+                className="border-t px-4 pt-3.5 pb-5 space-y-3 shrink-0"
+              >
+                <div className="flex justify-between items-baseline">
+                  <span
+                    style={{ color: "#1a1a1a", letterSpacing: "0.06em" }}
+                    className="font-condensed text-sm font-bold uppercase"
+                  >
+                    Subtotal
+                  </span>
+                  <span
+                    style={{ color: "#1a1a1a" }}
+                    className="font-condensed font-bold text-lg"
+                  >
+                    &#8358;{subtotal.toLocaleString()}
+                  </span>
                 </div>
                 <button
                   onClick={onCheckout}
-                  className="w-full bg-secondary text-secondary-foreground font-condensed font-bold uppercase tracking-wider py-3 rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: "#E60019", color: "#ffffff", letterSpacing: "0.06em" }}
+                  className="w-full font-condensed font-bold uppercase text-sm py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
                 >
                   Proceed to Checkout
                 </button>
