@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from "react";
 import type { CartItem } from "../types/menu";
 import {
   PACK_ITEM_CODES,
@@ -48,8 +48,7 @@ function applyPackSync(items: CartItem[], packs: TakeawayPacks): CartItem[] {
     const pack = packs[kind] as TakeawayPack | null | undefined;
     if (!pack || requiredQty === 0) return;
 
-    const existing = items.find((i) => i.item_code === pack.item_code);
-    const finalQty = Math.max(requiredQty, existing?.qty ?? 0);
+    const finalQty = requiredQty;
 
     result.push({
       item_code: pack.item_code,
