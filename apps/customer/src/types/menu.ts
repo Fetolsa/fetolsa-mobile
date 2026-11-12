@@ -6,6 +6,7 @@
   image?: string;
   category: string;
   paired_drinks?: string[];
+  suggested_addons?: { section: string; items: string[] }[];
 }
 
 export interface MenuCategory {

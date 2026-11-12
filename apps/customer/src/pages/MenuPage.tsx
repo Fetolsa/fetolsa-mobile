@@ -1,6 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
-import { fetchMenu, fetchBranches, fetchTakeawayPacks } from "../lib/menu-api";
+import { fetchMenu, fetchBranches, fetchHomeConfig, type HomeConfig } from "../lib/menu-api";
+import { buildPairingSections, type PairingSection } from "../lib/pairing";
+import { ComboStrip } from "../components/ComboStrip";
 import type { MenuItem, MenuCategory, Branch } from "../types/menu";
 import type { CustomerOrder } from "../lib/auth-api";
 import { useBranch } from "../context/BranchContext";
@@ -62,7 +64,7 @@ export default function MenuPage() {
   const [activeCategory, setActiveCategory] = useState("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [pairingOpen, setPairingOpen] = useState(false);
-  const [pairingDrinks, setPairingDrinks] = useState<MenuItem[]>([]);
+  const [pairingSections, setPairingSections] = useState<PairingSection[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -73,7 +75,8 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { branch, setBranch } = useBranch();
-  const { items: cartItems, clear: clearCart, addItem, setTakeawayPacks } = useCart();
+  const { items: cartItems, clear: clearCart, addItem } = useCart();
+  const [home, setHome] = useState<HomeConfig>({ highlights: [], combos: [] });
   const { needsEmailPrompt, setNeedsEmailPrompt, isLoggedIn, orders } = useCustomer();
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -88,23 +91,6 @@ export default function MenuPage() {
   }, [categories]);
 
   const sortedCategories = useMemo(() => sortCategoriesByMealSlot(categories), [categories]);
-
-  const computeSuggestedDrinks = (): MenuItem[] => {
-    const cartCodes = new Set(cartItems.map((c) => c.item_code));
-    const drinkCodes = new Set<string>();
-    for (const cartItem of cartItems) {
-      const menuItem = itemsByCode.get(cartItem.item_code);
-      if (!menuItem || !menuItem.paired_drinks) continue;
-      for (const code of menuItem.paired_drinks) {
-        if (!cartCodes.has(code)) {
-          drinkCodes.add(code);
-        }
-      }
-    }
-    return Array.from(drinkCodes)
-      .map((code) => itemsByCode.get(code))
-      .filter((d): d is MenuItem => Boolean(d));
-  };
 
   const handleReorder = (order: CustomerOrder) => {
     if (!order.items || order.items.length === 0) return;
@@ -156,10 +142,9 @@ export default function MenuPage() {
       })
       .catch(() => {});
 
-    fetchTakeawayPacks()
-      .then((pack) => {
-        if (cancelled) return;
-        setTakeawayPacks(pack);
+    fetchHomeConfig()
+      .then((cfg) => {
+        if (!cancelled) setHome(cfg);
       })
       .catch(() => {});
 
@@ -194,9 +179,9 @@ export default function MenuPage() {
 
   const handleCheckout = () => {
     setCartOpen(false);
-    const drinks = computeSuggestedDrinks();
-    if (drinks.length > 0) {
-      setPairingDrinks(drinks);
+    const sections = buildPairingSections(cartItems, itemsByCode);
+    if (sections.length > 0) {
+      setPairingSections(sections);
       setPairingOpen(true);
     } else {
       setCheckoutOpen(true);
@@ -248,7 +233,8 @@ export default function MenuPage() {
         onCartClick={() => setCartOpen(true)}
       />
       <LocationBar branches={branches} />
-      <TimeAwareHero itemsByCode={itemsByCode} onSelectItem={setSelectedItem} />
+      <TimeAwareHero itemsByCode={itemsByCode} onSelectItem={setSelectedItem} highlights={home.highlights} />
+      <ComboStrip combos={home.combos} onSelectItem={setSelectedItem} />
       <SearchBar onClick={() => setSearchSheetOpen(true)} />
       <CategoryChips
         categories={sortedCategories}
@@ -338,7 +324,7 @@ export default function MenuPage() {
       <MenuItemModal item={selectedItem} onClose={() => setSelectedItem(null)} />
       <DrinkPairingModal
         open={pairingOpen}
-        pairedDrinks={pairingDrinks}
+        sections={pairingSections}
         onClose={handlePairingClose}
       />
       <CategorySheet

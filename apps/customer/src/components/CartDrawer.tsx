@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Minus, Plus, Trash2, Package } from "lucide-react";
+import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function CartDrawer({ open, onClose, onCheckout }: Props) {
-  const { items, updateQty, removeItem, subtotal, requiredPackCounts, takeawayPacks } = useCart();
+  const { items, updateQty, removeItem, subtotal } = useCart();
 
   return (
     <AnimatePresence>
@@ -57,30 +57,14 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
                 </p>
               )}
               {items.map((item) => {
-                const isAuto = Boolean(item.auto_added);
-                let minQty = 1;
-                if (isAuto) {
-                  const matchedKind = (Object.keys(takeawayPacks) as Array<keyof typeof takeawayPacks>).find(
-                    (k) => takeawayPacks[k]?.item_code === item.item_code,
-                  );
-                  minQty = matchedKind ? (requiredPackCounts[matchedKind as keyof typeof requiredPackCounts] || 1) : 1;
-                }
-                const canDecrease = item.qty > minQty;
+                const canDecrease = item.qty > 1; // packs are added by the server at checkout
 
                 return (
                   <div
                     key={item.item_code}
-                    style={{ backgroundColor: "#ffffff", borderColor: isAuto ? "#1a1a1a" : "#ebe6dd" }}
+                    style={{ backgroundColor: "#ffffff", borderColor: "#ebe6dd" }}
                     className="rounded-xl p-3 flex items-center gap-3 border"
                   >
-                    {isAuto && (
-                      <div
-                        style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      >
-                        <Package className="w-4 h-4" />
-                      </div>
-                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <p
@@ -89,14 +73,6 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
                         >
                           {item.item_name}
                         </p>
-                        {isAuto && (
-                          <span
-                            style={{ backgroundColor: "#fdecee", color: "#E60019", letterSpacing: "0.08em" }}
-                            className="font-condensed text-[9px] font-bold uppercase px-1.5 py-0.5 rounded"
-                          >
-                            Required
-                          </span>
-                        )}
                       </div>
                       <p
                         style={{ color: "#E60019" }}
@@ -129,16 +105,14 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
-                      {!isAuto && (
-                        <button
-                          onClick={() => removeItem(item.item_code)}
-                          style={{ color: "#E60019" }}
-                          className="w-7 h-7 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors ml-0.5"
-                          aria-label="Remove item"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => removeItem(item.item_code)}
+                        style={{ color: "#E60019" }}
+                        className="w-7 h-7 flex items-center justify-center rounded hover:bg-destructive/10 transition-colors ml-0.5"
+                        aria-label="Remove item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );
@@ -171,6 +145,9 @@ export function CartDrawer({ open, onClose, onCheckout }: Props) {
                 >
                   Proceed to Checkout
                 </button>
+                <p style={{ color: "#888" }} className="font-condensed text-xs text-center">
+                  Takeaway packs, delivery and the service fee are added at checkout.
+                </p>
               </div>
             )}
           </motion.div>

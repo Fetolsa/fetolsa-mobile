@@ -2,7 +2,7 @@ import { tenant } from "../tenant.generated";
 import type { CartItem } from "../types/menu";
 
 const API_BASE = `${tenant.apiBaseUrl}/api/method`;
-const AUTH_HEADER = `token ${tenant.apiToken}`;
+// Every endpoint the app calls is a guest endpoint: no API key ships in the app.
 
 export interface DeliveryFeeResult {
   status: "ok" | "unlocatable" | "api_error" | "error";
@@ -59,7 +59,6 @@ export interface OrderStatusResult {
 async function frappeGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "GET",
-    headers: { Authorization: AUTH_HEADER },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   const json = await res.json();
@@ -69,10 +68,7 @@ async function frappeGet<T>(path: string): Promise<T> {
 async function frappePost<T>(path: string, body: URLSearchParams): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: {
-      Authorization: AUTH_HEADER,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -103,6 +99,8 @@ export async function placeOrder(req: PlaceOrderRequest): Promise<PlaceOrderResu
   params.append("delivery_fee", String(req.delivery_fee));
   params.append("order_type", req.order_type);
   if (req.payment_callback_url) params.append("payment_callback_url", req.payment_callback_url);
+  // This build shows the server quote, so the server prices the order (lines, packs, fees).
+  params.append("pricing", "server");
 
   return frappePost<PlaceOrderResult>(
     "/fetolsa_api.delivery.orders.place_delivery_order",
@@ -138,4 +136,60 @@ export function statusToStep(status: string | undefined): OrderStatusStep {
 
 export function formatNaira(amount: number | undefined): string {
   return `\u20A6${(amount ?? 0).toLocaleString()}`;
+}
+
+// ---- Server quote (WEB_SERVER_PRICING_V1): exactly what the order will charge.
+export interface QuoteLine {
+  item_code: string;
+  item_name: string;
+  qty: number;
+  rate: number;
+  amount: number;
+  notes?: string;
+}
+
+export interface OrderQuote {
+  status: "ok" | "error" | "disabled";
+  lines?: QuoteLine[];
+  packs?: QuoteLine[];
+  subtotal?: number;
+  delivery_fee?: number;
+  fee_status?: string;
+  processing_fee?: number;
+  total?: number;
+  error?: string;
+  message?: string;
+  code?: string;
+  item_code?: string;
+}
+
+export async function quoteOrder(req: {
+  items: { item_code: string; item_name: string; qty: number; notes?: string }[];
+  order_type: "Delivery" | "Pickup";
+  delivery_address: string;
+  branch: string;
+}): Promise<OrderQuote> {
+  const params = new URLSearchParams();
+  params.append("items", JSON.stringify(req.items));
+  params.append("order_type", req.order_type);
+  params.append("delivery_address", req.delivery_address);
+  params.append("branch", req.branch);
+  return frappePost<OrderQuote>("/fetolsa_api.delivery.web_pricing.quote_web_order", params);
+}
+
+// ---- Payment return check (PAYMENT_RETURN_CHECK_V1): verify a still-Pending order with Paystack.
+export interface PaymentReturnResult {
+  status: "ok" | "pending" | "error";
+  order_id?: string;
+  payment_status?: string;
+  message?: string;
+}
+
+export async function confirmPaymentReturn(orderId: string, reference: string): Promise<PaymentReturnResult | null> {
+  try {
+    const q = `order_id=${encodeURIComponent(orderId)}` + (reference ? `&reference=${encodeURIComponent(reference)}` : "");
+    return await frappeGet<PaymentReturnResult>(`/fetolsa_api.delivery.payments.paystack_callback?${q}`);
+  } catch {
+    return null; // rate limited / offline: the normal status polling carries on
+  }
 }

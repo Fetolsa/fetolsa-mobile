@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "cap:sync": "pnpm build:web && cap sync android",
     "cap:open:android": "cap open android",
-    "cap:run:android": "cap run android"
+    "cap:run:android": "cap run android",
+    "test": "vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
@@ -42,6 +43,7 @@
     "postcss": "^8.5.0",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "2.1.9"
   }
 }

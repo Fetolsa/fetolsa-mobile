@@ -19,8 +19,13 @@ function DeepLinkRouter() {
       const url = new URL(`https://placeholder${path}`);
       const orderId = url.searchParams.get("order_id");
       const status = url.searchParams.get("status");
+      // Paystack's reference rides along so the order page can verify a still-Pending payment.
+      const reference = url.searchParams.get("reference") || url.searchParams.get("trxref");
       if (orderId) {
-        const search = status ? `?status=${status}` : "";
+        const q = new URLSearchParams();
+        if (status) q.set("status", status);
+        if (reference) q.set("reference", reference);
+        const search = q.toString() ? `?${q.toString()}` : "";
         navigate(`/order/${orderId}${search}`);
       }
     });

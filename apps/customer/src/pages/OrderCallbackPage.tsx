@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { getOrderStatus, formatNaira } from "../lib/order-api";
+import { getOrderStatus, formatNaira, confirmPaymentReturn } from "../lib/order-api";
 import { useCart } from "../context/CartContext";
 
 export default function OrderCallbackPage() {
@@ -17,6 +17,9 @@ export default function OrderCallbackPage() {
 
   // Paystack passes ?status=success or ?status=cancelled (or no param if direct)
   const urlStatus = searchParams.get("status");
+  const reference = searchParams.get("reference") || "";
+  // Once per order for the life of the page (survives React re-running the effect).
+  const returnCheckedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (!orderId) {
@@ -41,6 +44,19 @@ export default function OrderCallbackPage() {
           clear();
           return;
         }
+        // Still Pending on the first look: ask the server ONCE to verify with Paystack
+        // (the webhook may be late). The polling below picks up the result.
+        if (returnCheckedFor.current !== orderId && (order.payment_status || "").toLowerCase() === "pending" && urlStatus !== "cancelled") {
+          returnCheckedFor.current = orderId;
+          const r = await confirmPaymentReturn(orderId, reference);
+          if (cancelled) return;
+          if (r?.payment_status === "Paid") {
+            setPaid(true);
+            setLoading(false);
+            clear();
+            return;
+          }
+        }
         if (attempts >= maxAttempts) {
           // Paystack webhook may not have hit yet; show pending state
           setPaid(urlStatus === "cancelled" ? false : null);
@@ -64,7 +80,7 @@ export default function OrderCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, urlStatus, clear]);
+  }, [orderId, urlStatus, reference, clear]);
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 import { tenant } from "../tenant.generated";
 
 const API_BASE = `${tenant.apiBaseUrl}/api/method`;
-const AUTH_HEADER = `token ${tenant.apiToken}`;
+// Every endpoint the app calls is a guest endpoint: no API key ships in the app.
 
 export interface PickupBranch {
   name: string;
@@ -27,7 +27,6 @@ export interface ListPickupBranchesResult {
 async function frappeGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "GET",
-    headers: { Authorization: AUTH_HEADER },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
   const json = await res.json();

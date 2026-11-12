@@ -2,17 +2,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Check, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import type { MenuItem } from "../types/menu";
+import type { PairingSection } from "../lib/pairing";
 import { useCart } from "../context/CartContext";
 import { tenant } from "../tenant.generated";
 import { placeholderColor, placeholderImage, placeholderInitial, resolveImageUrl } from "../lib/placeholder";
 
 interface Props {
   open: boolean;
-  pairedDrinks: MenuItem[];
+  sections: PairingSection[];
   onClose: () => void;
 }
 
-export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
+// Suggested add-ons for the dishes in the cart (VC's list per dish group, from the
+// server). Each one is added as its own line at its menu price.
+export function DrinkPairingModal({ open, sections, onClose }: Props) {
   const { addItem } = useCart();
   const [added, setAdded] = useState<Record<string, number>>({});
 
@@ -34,7 +37,7 @@ export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
   };
 
   const totalAdded = Object.values(added).reduce((sum, n) => sum + n, 0);
-  const visible = open && pairedDrinks.length > 0;
+  const visible = open && sections.some((s) => s.items.length > 0);
 
   return (
     <AnimatePresence>
@@ -77,13 +80,18 @@ export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
                 style={{ letterSpacing: "0.04em" }}
                 className="font-display text-[24px] uppercase leading-tight mt-1 pr-10"
               >
-                Add a drink to your order?
+                Goes well with your order
               </h2>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4">
+              {sections.map((sec) => (
+              <div key={sec.section} className="mb-4 last:mb-0" data-testid="pairing-section">
+              <p style={{ color: "#1a1a1a", letterSpacing: "0.06em" }} className="font-condensed text-sm font-bold uppercase mb-2">
+                {sec.section}
+              </p>
               <div className="grid grid-cols-2 gap-2.5">
-                {pairedDrinks.map((drink) => {
+                {sec.items.map((drink: MenuItem) => {
                   const count = added[drink.item_code] || 0;
                   const imageUrl = resolveImageUrl(drink.image, tenant.apiBaseUrl);
                   const categoryImage = placeholderImage(drink.item_name, drink.category);
@@ -170,6 +178,8 @@ export function DrinkPairingModal({ open, pairedDrinks, onClose }: Props) {
                   );
                 })}
               </div>
+              </div>
+              ))}
             </div>
 
             <div

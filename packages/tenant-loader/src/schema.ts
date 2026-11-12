@@ -82,5 +82,6 @@ export type TenantConfig = z.infer<typeof TenantConfigSchema>;
 // Runtime config = TenantConfig + fields injected at build-time from .env
 // Used in apps/customer/src/tenant.generated.ts
 export interface RuntimeTenantConfig extends TenantConfig {
-  apiToken: string;
+  /** No longer baked into builds (keyless customer app, 12 Nov 2026). */
+  apiToken?: string;
 }

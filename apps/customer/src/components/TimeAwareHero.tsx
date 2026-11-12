@@ -5,6 +5,8 @@ import { placeholderImage } from "../lib/placeholder";
 interface Props {
   itemsByCode: Map<string, MenuItem>;
   onSelectItem: (item: MenuItem) => void;
+  /** VC's highlight dishes (server setting). When set, they replace the per-slot defaults. */
+  highlights?: MenuItem[];
 }
 
 type MealSlot = "breakfast" | "lunch" | "dinner";
@@ -60,7 +62,7 @@ function getMealSlot(date: Date = new Date()): MealSlot {
   return "dinner";
 }
 
-export function TimeAwareHero({ itemsByCode, onSelectItem }: Props) {
+export function TimeAwareHero({ itemsByCode, onSelectItem, highlights = [] }: Props) {
   const [slot, setSlot] = useState<MealSlot>(() => getMealSlot());
 
   // Re-check slot every 5 minutes in case the user keeps the app open across a boundary
@@ -70,7 +72,8 @@ export function TimeAwareHero({ itemsByCode, onSelectItem }: Props) {
   }, []);
 
   const config = SLOTS[slot];
-  const picks = config.itemCodes
+  const codes = highlights.length > 0 ? highlights.map((h) => h.item_code) : config.itemCodes;
+  const picks = codes
     .map((code) => itemsByCode.get(code))
     .filter((i): i is MenuItem => Boolean(i));
 

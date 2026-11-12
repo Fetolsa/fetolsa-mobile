@@ -7,7 +7,7 @@ import {
 import { useCart } from "../context/CartContext";
 import { useBranch } from "../context/BranchContext";
 import { useCustomer } from "../context/CustomerContext";
-import { calculateDeliveryFee, placeOrder } from "../lib/order-api";
+import { calculateDeliveryFee, placeOrder, quoteOrder, type OrderQuote } from "../lib/order-api";
 import { pickPickupBranch, type PickupBranch } from "../lib/pickup-api";
 import { updateLastAddress } from "../lib/auth-api";
 import { tenant } from "../tenant.generated";
@@ -189,7 +189,6 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
   };
 
   const effectiveFee = orderType === "pickup" ? 0 : deliveryFee;
-  const total = items.length > 0 ? subtotal + effectiveFee : 0;
 
   const orderBranch =
     orderType === "pickup" && pickupBranch
@@ -203,6 +202,51 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
     "Address not configured";
   const pickupCardName = pickupBranch ? pickupBranch.name : fallbackBranchName;
   const pickupCardAddress = pickupBranch ? pickupBranch.address : fallbackBranchAddress;
+
+  // Server quote: the prices, packs, delivery fee, service fee and total the order
+  // will be charged. Shown before Paystack so the total on screen = the total charged.
+  const [quote, setQuote] = useState<OrderQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const quoteReady = orderType === "pickup" || (addressConfirmed && Boolean(confirmedAddress));
+  const cartKey = JSON.stringify(items.map((i) => [i.item_code, i.qty, i.notes || ""]));
+
+  useEffect(() => {
+    if (!open || items.length === 0 || !orderBranch || !quoteReady) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoteLoading(true);
+    const t = setTimeout(() => {
+      quoteOrder({
+        items: items.map((i) => ({ item_code: i.item_code, item_name: i.item_name, qty: i.qty, notes: i.notes || "" })),
+        order_type: orderType === "pickup" ? "Pickup" : "Delivery",
+        delivery_address: orderType === "pickup" ? "Pickup" : confirmedAddress,
+        branch: orderBranch,
+      })
+        .then((q) => !cancelled && setQuote(q))
+        .catch(() => !cancelled && setQuote({ status: "error", error: "Could not price your order. Please try again." }))
+        .finally(() => !cancelled && setQuoteLoading(false));
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, cartKey, orderBranch, orderType, quoteReady, confirmedAddress]);
+
+  const serverQuote = quote?.status === "ok" ? quote : null;
+  // "disabled" = server pricing is switched off on the site: fall back to the local sum.
+  const quoteOff = quote?.status === "disabled";
+  const quoteError = quote?.status === "error" ? quote.error || quote.message || "Could not price your order." : "";
+  const summaryLines = serverQuote
+    ? [...(serverQuote.lines || []), ...(serverQuote.packs || [])]
+    : items.map((i) => ({ item_code: i.item_code, item_name: i.item_name, qty: i.qty, rate: i.rate, amount: i.rate * i.qty }));
+  const shownSubtotal = serverQuote ? serverQuote.subtotal || 0 : subtotal;
+  const shownFee = serverQuote ? serverQuote.delivery_fee || 0 : effectiveFee;
+  const shownProcessing = serverQuote ? serverQuote.processing_fee || 0 : 0;
+  const total = items.length > 0 ? (serverQuote ? serverQuote.total || 0 : subtotal + effectiveFee) : 0;
+  const canPay = Boolean(serverQuote) || quoteOff;
 
   const handleSubmit = async () => {
     setError("");
@@ -220,6 +264,10 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
     }
     if (items.length === 0) {
       setError("Cart is empty");
+      return;
+    }
+    if (!canPay) {
+      setError(quoteError || "Your order is still being priced. Please wait a moment.");
       return;
     }
 
@@ -619,7 +667,7 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
                   style={{ color: "#1a1a1a", letterSpacing: "0.06em" }}
                   className="font-condensed text-sm font-bold uppercase"
                 >
-                  Order summary &middot; {items.reduce((s, i) => s + i.qty, 0)} item{items.length === 1 ? "" : "s"}
+                  Order summary &middot; {summaryLines.reduce((s, i) => s + i.qty, 0)} item{summaryLines.length === 1 ? "" : "s"}
                 </span>
                 {summaryOpen ? (
                   <ChevronUp style={{ color: "#1a1a1a" }} className="w-4 h-4" />
@@ -632,12 +680,12 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
                   style={{ borderColor: "#ebe6dd" }}
                   className="border-t px-3.5 py-3 space-y-1 text-sm"
                 >
-                  {items.map((i) => (
+                  {summaryLines.map((i) => (
                     <div key={i.item_code} className="flex justify-between" style={{ color: "#1a1a1a" }}>
                       <span className="truncate pr-2">
                         {i.item_name} <span className="text-muted-foreground">x{i.qty}</span>
                       </span>
-                      <span className="shrink-0">&#8358;{(i.rate * i.qty).toLocaleString()}</span>
+                      <span className="shrink-0">&#8358;{i.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -648,21 +696,37 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               >
                 <div className="flex justify-between text-muted-foreground">
                   <span>Subtotal</span>
-                  <span style={{ color: "#1a1a1a" }}>&#8358;{subtotal.toLocaleString()}</span>
+                  <span style={{ color: "#1a1a1a" }}>&#8358;{shownSubtotal.toLocaleString()}</span>
                 </div>
+                {serverQuote && (serverQuote.packs || []).length > 0 && (
+                  <div className="flex justify-between text-muted-foreground text-xs" data-testid="quote-packs">
+                    <span>incl. takeaway packs</span>
+                    <span>&#8358;{(serverQuote.packs || []).reduce((s, p) => s + p.amount, 0).toLocaleString()}</span>
+                  </div>
+                )}
                 {orderType === "delivery" && (
                   <div className="flex justify-between text-muted-foreground">
                     <span>Delivery</span>
                     <span style={{ color: "#1a1a1a" }}>
-                      {addressConfirmed
-                        ? `\u20A6${deliveryFee.toLocaleString()}`
-                        : `\u20A6${DEFAULT_FEE.toLocaleString()} (estimate)`}
+                      {serverQuote
+                        ? `\u20A6${shownFee.toLocaleString()}`
+                        : addressConfirmed
+                          ? `\u20A6${deliveryFee.toLocaleString()}`
+                          : `\u20A6${DEFAULT_FEE.toLocaleString()} (estimate)`}
                     </span>
+                  </div>
+                )}
+                {shownProcessing > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Service fee</span>
+                    <span style={{ color: "#1a1a1a" }}>&#8358;{shownProcessing.toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between font-bold text-base pt-1">
                   <span style={{ color: "#1a1a1a" }}>Total</span>
-                  <span style={{ color: "#E60019" }}>&#8358;{total.toLocaleString()}</span>
+                  <span style={{ color: "#E60019" }} data-testid="checkout-total">
+                    {quoteLoading ? "…" : <>&#8358;{total.toLocaleString()}</>}
+                  </span>
                 </div>
               </div>
             </section>
@@ -679,6 +743,16 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
                   ))}
                 </div>
               </details>
+            )}
+
+            {quoteError && (
+              <div
+                style={{ backgroundColor: "#fdecee", color: "#E60019" }}
+                className="rounded-xl px-3.5 py-2.5 text-sm"
+                data-testid="quote-error"
+              >
+                {quoteError}
+              </div>
             )}
 
             {error && (
@@ -700,13 +774,16 @@ export function CheckoutModal({ open, onClose, onOrderPlaced }: Props) {
               onClick={handleSubmit}
               disabled={
                 submitLoading ||
+                quoteLoading ||
+                !canPay ||
                 (orderType === "delivery" && (feeLoading || !addressConfirmed))
               }
+              data-testid="pay-button"
               style={{ backgroundColor: "#E60019", color: "#ffffff", letterSpacing: "0.06em" }}
               className="w-full font-condensed font-bold uppercase text-sm py-4 rounded-2xl disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
             >
               {submitLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Pay &#8358;{total.toLocaleString()} with Paystack
+              {canPay ? <>Pay &#8358;{total.toLocaleString()} with Paystack</> : quoteReady ? "Pricing your order…" : "Pay with Paystack"}
             </button>
           </div>
         </motion.div>
