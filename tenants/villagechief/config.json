@@ -6,8 +6,8 @@
     "customer":  {
                      "bundleId":  "app.oyasync.fetolsa.villagechief.customer",
                      "appName":  "Village Chief",
-                     "versionName":  "1.0.0",
-                     "versionCode":  1
+                     "versionName":  "1.1",
+                     "versionCode":  3
                  },
     "rider":  {
                   "bundleId":  "app.oyasync.fetolsa.villagechief.rider",
